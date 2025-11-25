@@ -1,0 +1,394 @@
+openapi: 3.0.3
+info:
+  title: ISBE POC – Managements API
+  version: 0.1.0
+  description: >
+    API para la gestión de organizaciones con contratos y anexos.
+    Los archivos se almacenan en el sistema de archivos local del servidor y la metadata en PostgreSQL.
+    JWT bearer auth requerido; /health es público.
+servers:
+  - url: http://localhost:3000
+
+tags:
+  - name: Health
+  - name: Managements
+
+paths:
+  /health:
+    get:
+      security: []
+      summary: Health check
+      tags: [Health]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  uptime: { type: number, example: 12.34 }
+  /metrics:
+    get:
+      summary: Expose Prometheus metrics
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/managements:
+    post:
+      summary: Crear un management
+      description: >
+        Crea un nuevo management con contrato principal y anexos opcionales.
+        Los archivos se suben como multipart/form-data y se almacenan en disco local.
+        El role_id NO se incluye en la creación, solo el admin puede asignarlo después.
+      tags: [Managements]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ManagementCreate'
+      responses:
+        '201':
+          description: Management creado exitosamente (sin role_id asignado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Management'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/{organization_identifier}/documents:
+    put:
+      summary: Actualizar documentos/anexos (Usuario)
+      description: >
+        Permite a usuarios de la organización actualizar/añadir documentos y anexos.
+        Solo se pueden modificar archivos, NO el role_id.
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización (PK)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ManagementUpdateDocuments'
+      responses:
+        '200':
+          description: Documentos actualizados exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Management'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/{organization_identifier}/role:
+    put:
+      summary: Asignar/cambiar rol (Solo Admin)
+      description: >
+        Permite al administrador asignar o cambiar el rol de un management.
+        Al asignar un rol, se aplican las políticas asociadas.
+        Solo accesible para administradores.
+      tags: [Managements]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización (PK)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagementUpdateRole'
+      responses:
+        '200':
+          description: Rol asignado/actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Management'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/organization/{organization_identifier}:
+    get:
+      summary: Obtener un management por organization_identifier
+      description: Obtiene un management específico por su identificador de organización
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización
+      responses:
+        '200':
+          description: Management encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Management'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/admin/all:
+    get:
+      summary: Obtener todos los managements (Admin)
+      description: Retorna todos los managements sin paginación (solo para administradores)
+      tags: [Managements]
+      responses:
+        '200':
+          description: Lista de todos los managements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Management'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/{id}:
+    get:
+      summary: Obtener un management por ID
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Management encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Management'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: No autorizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Acceso denegado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    DocumentMetadata:
+      type: object
+      description: Metadata del documento almacenado en disco local
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "/uploads/contracts/ORG-2024-001_principal_abc123.pdf"
+          description: URL relativa del archivo en el servidor (ruta local)
+        filename:
+          type: string
+          example: "contrato_principal.pdf"
+          description: Nombre original del archivo
+        size:
+          type: integer
+          example: 1048576
+          description: Tamaño del archivo en bytes
+        mimeType:
+          type: string
+          example: "application/pdf"
+          description: Tipo MIME del archivo
+      required:
+        - url
+        - filename
+        - size
+        - mimeType
+
+    Management:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        organization_identifier:
+          type: string
+          example: "ORG-2024-001"
+          description: Identificador único de la organización (PK - solo hay uno por compañía)
+        principal_contract:
+          $ref: '#/components/schemas/DocumentMetadata'
+        operator_anexo:
+          allOf:
+            - $ref: '#/components/schemas/DocumentMetadata'
+          nullable: true
+        auditor_anexo:
+          allOf:
+            - $ref: '#/components/schemas/DocumentMetadata'
+          nullable: true
+        role_id:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del rol asociado (null hasta que admin lo asigne)
+        created_at:
+          type: string
+          format: date-time
+        modified_at:
+          type: string
+          format: date-time
+
+    ManagementCreate:
+      type: object
+      required:
+        - organization_identifier
+        - principal_contract
+      properties:
+        organization_identifier:
+          type: string
+          example: "ORG-2024-001"
+          description: Identificador único de la organización (PK)
+        principal_contract:
+          type: string
+          format: binary
+          description: Archivo del contrato principal (PDF, DOC, etc.) - REQUERIDO
+        operator_anexo:
+          type: string
+          format: binary
+          description: Archivo anexo del operador (opcional)
+        auditor_anexo:
+          type: string
+          format: binary
+          description: Archivo anexo del auditor (opcional)
+      description: >
+        Schema para crear un management. NO incluye role_id - solo admin puede asignarlo después.
+
+    ManagementUpdateDocuments:
+      type: object
+      description: >
+        Schema para actualizar documentos/anexos (usuarios).
+        Todos los campos son opcionales. Al menos un archivo debe ser enviado.
+      properties:
+        principal_contract:
+          type: string
+          format: binary
+          description: Nuevo archivo del contrato principal
+        operator_anexo:
+          type: string
+          format: binary
+          description: Nuevo archivo anexo del operador
+        auditor_anexo:
+          type: string
+          format: binary
+          description: Nuevo archivo anexo del auditor
+
+    ManagementUpdateRole:
+      type: object
+      required:
+        - role_id
+      properties:
+        role_id:
+          type: integer
+          example: 1
+          description: ID del rol a asignar (requerido)
+      description: >
+        Schema para asignar/cambiar rol (solo admin).
+        Al asignar un rol, se aplican automáticamente las políticas asociadas.
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Algo salió mal"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+          description: Código de error (opcional)

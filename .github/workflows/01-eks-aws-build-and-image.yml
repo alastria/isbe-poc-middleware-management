@@ -1,0 +1,79 @@
+
+name: 1) EKS AWS - Build and push image to ECR
+description: Build the Docker image for the application and push it to Amazon ECR, so it can be deployed to the EKS cluster in othrer workflows.
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+
+env:
+  #DEPLOY_NAME:  ${{ github.ref_name }}
+  # TODO: change to main or develop, or add other branches
+  DEPLOY_NAME:  "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
+  IMAGE_TAG: latest
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and push image to ECR
+    if: ${{ ! startsWith(github.event.head_commit.message, '[NOTBUILD]') && ! startsWith(github.event.head_commit.message, '[AUTO]') }}
+    runs-on: ubuntu-latest
+    # TODO: change to main or develop, or add other branches
+    environment: "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check variables and secrets
+      run: |
+        echo "🔑 BUILD status -> ${{ vars.BUILD }}"
+        if [[ -z "${{ vars.BUILD }}" || "${{ vars.BUILD }}" != "true" ]]; then
+          echo "⚠️ BUILD disabled, please set BUILD=true on Github in variables"
+          echo "⏭️ Skipping build step."
+          exit 0
+        fi
+        if [[ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]]; then
+          echo "🛑 AWS_ACCESS_KEY_ID is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]]; then
+          echo "🛑 AWS_SECRET_ACCESS_KEY is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ vars.AWS_REGION }}" ]]; then
+          echo "🛑 AWS_REGION is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.APP_NAME }}" ]]; then
+          echo "🛑 APP_NAME is not set in variables"
+          exit 1
+        fi
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build image and push to ECR
+      id: build-image
+      env:
+       ECR_REPOSITORY: ${{ vars.APP_NAME }}/${{ env.DEPLOY_NAME }}
+       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+       IMAGE_TAG: ${{ env.IMAGE_TAG }}
+      run: |
+        # Construir un contenedor Docker y subirlo a ECR para que pueda ser desplegado en EKS
+        echo "🏗️ Environment: ${{ vars.ENVIRONMENT }}"
+        echo "🚀 Build desde rama: ${{ github.ref_name }}"
+        echo "📦 App name + deployment: ${{ vars.APP_NAME }}/${{ env.DEPLOY_NAME }}"
+        echo "🏷️ Image tag: ${{ env.IMAGE_TAG }}"
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "  👉🏻 ✅ Imagen Docker Creada y subida a ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"

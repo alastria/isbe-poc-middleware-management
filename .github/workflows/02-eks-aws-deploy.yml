@@ -1,0 +1,190 @@
+
+name: 2) EKS AWS   Deploy to EKS Cluster
+description: Deploy the application to the EKS cluster from image ECR, using the helm deployment (in .helm folder)
+
+on:
+  workflow_dispatch:
+
+env:
+  #DEPLOY_NAME: ${{ github.ref_name }}
+  # TODO: change to main or develop, or add other branches
+  DEPLOY_NAME: "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
+  IMAGE_TAG: latest
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    # TODO: change to main or develop, or add other branches
+    environment: "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check variables and secrets
+      run: |
+        echo "🔑 DEPLOY status -> ${{ vars.DEPLOY }}"
+        if [[ -z "${{ vars.DEPLOY }}" || "${{ vars.DEPLOY }}" != "true" ]]; then
+          echo "⚠️ DEPLOY disabled, please set DEPLOY=true on Github in variables"
+          echo "⏭️ Skipping deployment step."
+          exit 1
+        fi
+        if [[ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]]; then
+          echo "🛑 AWS_ACCESS_KEY_ID is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]]; then
+          echo "🛑 AWS_SECRET_ACCESS_KEY is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ vars.AWS_REGION }}" ]]; then
+          echo "🛑 AWS_REGION is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.APP_NAME }}" ]]; then
+          echo "🛑 APP_NAME is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.EKS_CLUSTER_NAME }}" ]]; then
+          echo "🛑 EKS_CLUSTER_NAME is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.EKS_NAMESPACE }}" ]]; then
+          echo "🛑 EKS_NAMESPACE is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.PUBLIC_BASE_URL }}" ]]; then
+          echo "🛑 PUBLIC_BASE_URL is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.ALLOWED_ORIGINS }}" ]]; then
+          echo "🛑 ALLOWED_ORIGINS is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.AUTH_N_ENABLED }}" ]]; then
+          echo "🛑 AUTH_N_ENABLED is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.FAKE_ROLE }}" ]]; then
+          echo "🛑 FAKE_ROLE is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.FAKE_USER_ID }}" ]]; then
+          echo "🛑 FAKE_USER_ID is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.FAKE_COMPANY_ID }}" ]]; then
+          echo "🛑 FAKE_COMPANY_ID is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.KEYCLOAK_ISSUER }}" ]]; then
+          echo "🛑 KEYCLOAK_ISSUER is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.KEYCLOAK_AUDIENCE }}" ]]; then
+          echo "🛑 KEYCLOAK_AUDIENCE is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.DATABASE_URL }}" ]]; then
+          echo "🛑 DATABASE_URL is not set in secrets"
+          exit 1
+        fi
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ vars.AWS_REGION }} --name ${{ vars.EKS_CLUSTER_NAME }}
+
+    - name: Deploy to EKS
+      env:
+        ECR_REPOSITORY: ${{ vars.APP_NAME }}/${{ env.DEPLOY_NAME }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: ${{ vars.AWS_REGION }}
+        HOST_NAME: ${{ vars.HOST_NAME }}
+        ARN_CERT: ${{ vars.ARN_CERT }}
+        EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+        PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+        ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+        AUTH_N_ENABLED: ${{ vars.AUTH_N_ENABLED }}
+        FAKE_ROLE: ${{ vars.FAKE_ROLE }}
+        FAKE_USER_ID: ${{ vars.FAKE_USER_ID }}
+        FAKE_COMPANY_ID: ${{ vars.FAKE_COMPANY_ID }}
+        KEYCLOAK_ISSUER: ${{ vars.KEYCLOAK_ISSUER }}
+        KEYCLOAK_AUDIENCE: ${{ vars.KEYCLOAK_AUDIENCE }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      run: |
+        echo "🏗️ Environment: ${{ vars.ENVIRONMENT }}"
+        echo "🚀 Desplegando desde rama: ${{ github.ref_name }}"
+        echo "📦 App name / deployment: ${{ env.DEPLOY_NAME }}/${{ vars.APP_NAME }}"
+        echo "🏷️ Image tag: ${{ env.IMAGE_TAG }}"
+        echo "🏷️ EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}"
+        echo "🏷️ EKS_NAMESPACE: ${{ vars.EKS_NAMESPACE }}"
+        echo "🏷️ ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}"
+        echo "🏷️ ECR_REGISTRY: ${{ env.ECR_REGISTRY }}"
+
+        cd .helm
+
+        # Install or Update Helm chart values with the correct image details
+        echo " > Installing or Updating Helm chart with image details..."
+
+        envsubst < values.yaml | helm template . --values -
+
+        kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }}
+        if kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} 2>&1 | grep -q "No resources found"; then
+          echo " > Installing Helm chart with image details..."
+          envsubst < values.yaml | helm install ${{ vars.APP_NAME }}-${{ env.DEPLOY_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
+        else
+          echo " > Updating Helm chart values with image details..."
+          envsubst < values.yaml | helm upgrade ${{ vars.APP_NAME }}-${{ env.DEPLOY_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
+          # Force restart pods to pick up new environment variables from updated secrets/configmaps
+          echo " > Restarting pods to pick up new environment variables..."
+          kubectl -n ${{ vars.EKS_NAMESPACE }} rollout restart deployment ${{ vars.APP_NAME }}
+        fi
+
+        echo " > Verifying deployment..."
+        kubectl -n ${{ vars.EKS_NAMESPACE }} get pods
+
+        echo " > Getting last deployed pod ID"
+        LAST_POD=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} -o custom-columns=creationTimestamp:.metadata.creationTimestamp,PodName:.metadata.name --no-headers | sort -k1 | tail -n 1 | awk '{print $2}')
+        echo "Last deployed pod $LAST_POD"
+        echo " > Waiting for pod to be ready"
+        OUT=$(kubectl -n ${{ vars.EKS_NAMESPACE }} wait --for=condition=ready pod/$LAST_POD --timeout=30s) || true
+        echo "$OUT" | grep -q 'condition met' || {
+          echo " > Getting NEW LAST deployed pod ID";
+          LAST_POD_2=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} -o custom-columns=creationTimestamp:.metadata.creationTimestamp,PodName:.metadata.name --no-headers | sort -k1 | tail -n 1 | awk '{print $2}');
+          echo " > Getting pod logs $LAST_POD_2";
+          echo $(kubectl -n ${{ vars.EKS_NAMESPACE }} logs $LAST_POD_2);
+          echo "❌ Pod $LAST_POD is not ready after 30 seconds";
+        }
+        kubectl -n ${{ vars.EKS_NAMESPACE }} get pods
+        LAST_POD=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} -o custom-columns=creationTimestamp:.metadata.creationTimestamp,PodName:.metadata.name --no-headers | sort -k1 | tail -n 1 | awk '{print $2}')
+        echo " > Describing pod $LAST_POD"
+        kubectl -n ${{ vars.EKS_NAMESPACE }} describe pod $LAST_POD
+        POD_STATUS=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pod $LAST_POD --no-headers | awk '{print $3}')
+        if [ "$POD_STATUS" != "Running" ]; then
+          echo " > Getting pod logs";
+          echo $(kubectl -n ${{ vars.EKS_NAMESPACE }} logs $LAST_POD);
+          echo "❌ Pod $LAST_POD is not running (status $POD_STATUS)";
+          echo "❌ DEPLOYED ERROR.";
+          az logout
+          exit 1;
+        fi
+        echo "👉🏻 ✅ DEPLOYED SUCCESSFULLY to EKS cluster ${{ vars.EKS_CLUSTER_NAME }} in namespace ${{ vars.EKS_NAMESPACE }} using image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        echo "👉🏻 ✅  Visit https://${{ vars.HOST_NAME }} to see your application"

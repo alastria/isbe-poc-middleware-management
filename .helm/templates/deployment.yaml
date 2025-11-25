@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "isbe-poc-middleware-managements.fullname" $ }}
+  labels:
+    {{- include "isbe-poc-middleware-managements.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "isbe-poc-middleware-managements.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "isbe-poc-middleware-managements.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.port }}
+          env:
+          {{- range $key, $value := .Values.app.envs }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{- range $key := .Values.app.secretKeyRefs }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "isbe-poc-middleware-managements.fullname" $ }}
+                  key: {{ $key }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+#            - name: metrics
+#              containerPort: 9113
+          # ... resto de la configuración del contenedor ...
+#      volumes:
+#        - name: mi-app-data-volume
+#          persistentVolumeClaim:
+#            claimName: mi-app-pvc

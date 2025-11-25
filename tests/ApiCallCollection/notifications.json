@@ -1,0 +1,138 @@
+{
+    "info": {
+      "name": "ISBE POC - Managements API",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "description": "Colección para pruebas de API de notificaciones (Node + Express + TS)"
+    },
+    "item": [
+      {
+        "name": "Health Check",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "http://localhost:3000/health",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["health"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "List Managements",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer <JWT_TOKEN>",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://localhost:3000/api/managements",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "managements"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "Create Management",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer <JWT_TOKEN>",
+              "type": "text"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"title\": \"Mantenimiento programado\",\n  \"body\": \"El servicio estará en mantenimiento el viernes 22:00-23:00.\",\n  \"role\": \"desarrollador\",\n  \"company_id\": \"acme\"\n}"
+          },
+          "url": {
+            "raw": "http://localhost:3000/api/managements",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "managements"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "Get Management by ID",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer <JWT_TOKEN>",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://localhost:3000/api/managements/42",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "managements", "42"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "Delete Management by ID",
+        "request": {
+          "method": "DELETE",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer <JWT_TOKEN>",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://localhost:3000/api/managements/42",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "managements", "42"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "List Managements by Company and Role",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer <JWT_TOKEN>",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://localhost:3000/api/managements/company/acme/role/desarrollador",
+            "protocol": "http",
+            "host": ["localhost"],
+            "port": "3000",
+            "path": ["api", "managements", "company", "acme", "role", "desarrollador"]
+          }
+        },
+        "response": []
+      }
+    ]
+  }
