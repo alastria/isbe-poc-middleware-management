@@ -1,15 +1,17 @@
 
-name: 2) EKS AWS   Deploy to EKS Cluster
+name: 2) EKS AWS Deploy to EKS Cluster
 description: Deploy the application to the EKS cluster from image ECR, using the helm deployment (in .helm folder)
 
 on:
   workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Image tag to deploy (from ECR). If not provided, "latest" will be used'
+        required: false
+        type: string
 
 env:
-  #DEPLOY_NAME: ${{ github.ref_name }}
-  # TODO: change to main or develop, or add other branches
-  DEPLOY_NAME: "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
-  IMAGE_TAG: latest
+  IMAGE_TAG: "${{ github.event.inputs.version_tag || 'latest' }}"
 
 permissions:
   contents: read
@@ -57,12 +59,16 @@ jobs:
           echo "🛑 EKS_NAMESPACE is not set in variables"
           exit 1
         fi
-        if [[ -z "${{ vars.PUBLIC_BASE_URL }}" ]]; then
-          echo "🛑 PUBLIC_BASE_URL is not set in variables"
+        if [[ -z "${{ vars.HOST_NAME }}" ]]; then
+          echo "🛑 HOST_NAME is not set in variables"
           exit 1
         fi
         if [[ -z "${{ vars.ALLOWED_ORIGINS }}" ]]; then
           echo "🛑 ALLOWED_ORIGINS is not set in variables"
+          exit 1
+        fi
+        if [[ -z "${{ vars.PUBLIC_BASE_URL }}" ]]; then
+          echo "🛑 PUBLIC_BASE_URL is not set in variables"
           exit 1
         fi
         if [[ -z "${{ vars.AUTH_N_ENABLED }}" ]]; then
@@ -110,17 +116,16 @@ jobs:
 
     - name: Deploy to EKS
       env:
-        ECR_REPOSITORY: ${{ vars.APP_NAME }}/${{ env.DEPLOY_NAME }}
+        ECR_REPOSITORY: ${{ vars.APP_NAME }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ env.IMAGE_TAG }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION: ${{ vars.AWS_REGION }}
         HOST_NAME: ${{ vars.HOST_NAME }}
-        ARN_CERT: ${{ vars.ARN_CERT }}
         EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
-        PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+        PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         AUTH_N_ENABLED: ${{ vars.AUTH_N_ENABLED }}
         FAKE_ROLE: ${{ vars.FAKE_ROLE }}
         FAKE_USER_ID: ${{ vars.FAKE_USER_ID }}
@@ -132,31 +137,47 @@ jobs:
       run: |
         echo "🏗️ Environment: ${{ vars.ENVIRONMENT }}"
         echo "🚀 Desplegando desde rama: ${{ github.ref_name }}"
-        echo "📦 App name / deployment: ${{ env.DEPLOY_NAME }}/${{ vars.APP_NAME }}"
+        echo "📦 App name: ${{ vars.APP_NAME }}"
         echo "🏷️ Image tag: ${{ env.IMAGE_TAG }}"
         echo "🏷️ EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}"
         echo "🏷️ EKS_NAMESPACE: ${{ vars.EKS_NAMESPACE }}"
         echo "🏷️ ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}"
         echo "🏷️ ECR_REGISTRY: ${{ env.ECR_REGISTRY }}"
 
+        echo " > Check existing image in ECR..."
+        if ! aws ecr describe-images --repository-name $ECR_REPOSITORY --image-ids imageTag=$IMAGE_TAG >/dev/null 2>&1; then
+          echo "❌ Image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG does not exist in ECR. Aborting deployment."
+          exit 1
+        fi
+        echo "👉🏻 ✅ Image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG "
+        
         cd .helm
 
         # Install or Update Helm chart values with the correct image details
         echo " > Installing or Updating Helm chart with image details..."
 
-        envsubst < values.yaml | helm template . --values -
+        envsubst < values.yaml | helm template . --debug --values - 
 
-        kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }}
-        if kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} 2>&1 | grep -q "No resources found"; then
-          echo " > Installing Helm chart with image details..."
-          envsubst < values.yaml | helm install ${{ vars.APP_NAME }}-${{ env.DEPLOY_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
-        else
+        echo " > Checking if deployment exists... (for example: sh.helm.release.v1.${{ vars.APP_NAME }}.v1)"
+        if kubectl -n ${{ vars.EKS_NAMESPACE }} get secrets | grep ${{ vars.APP_NAME }}.v; then 
+          echo " > Deployment exists."
           echo " > Updating Helm chart values with image details..."
-          envsubst < values.yaml | helm upgrade ${{ vars.APP_NAME }}-${{ env.DEPLOY_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
+          envsubst < values.yaml | helm upgrade ${{ vars.APP_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
           # Force restart pods to pick up new environment variables from updated secrets/configmaps
           echo " > Restarting pods to pick up new environment variables..."
           kubectl -n ${{ vars.EKS_NAMESPACE }} rollout restart deployment ${{ vars.APP_NAME }}
+        else
+          echo " > Deployment does not exist."
+          echo " > Installing Helm chart with image details..."
+          envsubst < values.yaml | helm install ${{ vars.APP_NAME }} . --debug --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
         fi
+
+        #kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }}
+        #if kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} 2>&1 | grep -q "No resources found"; then
+        #  
+        #else
+        #  
+        #fi
 
         echo " > Verifying deployment..."
         kubectl -n ${{ vars.EKS_NAMESPACE }} get pods

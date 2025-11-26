@@ -1,0 +1,107 @@
+name: 3) Merge develop to main, release and push helm chart to ECR
+description: Merge the develop branch into main branch, create a tag and release, and push helm charts to ECR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to create after merge'
+        required: true
+        type: string
+
+jobs:
+  merge-tag-and-release:
+    runs-on: ubuntu-latest
+    environment: "${{ github.ref_name == 'main' && 'main' || github.ref_name == 'develop' && 'develop' || 'develop'  }}"
+    steps:
+      - name: Check variables and secrets
+        run: |
+          if [[ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]]; then
+            echo "🛑 AWS_ACCESS_KEY_ID is not set in secrets"
+            exit 1
+          fi
+          if [[ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]]; then
+            echo "🛑 AWS_SECRET_ACCESS_KEY is not set in secrets"
+            exit 1
+          fi
+          if [[ -z "${{ vars.AWS_REGION }}" ]]; then
+            echo "🛑 AWS_REGION is not set in variables"
+            exit 1
+          fi
+          if [[ -z "${{ vars.APP_NAME }}" ]]; then
+            echo "🛑 APP_NAME is not set in variables"
+            exit 1
+          fi
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Merge develop into main
+        run: |
+          git checkout main
+          git merge --no-ff develop -m "Merge develop into main [CI]"
+      
+      - name: Push changes to main
+        run: |
+          git push origin main
+
+      - name: Push helm charts to ECR
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ECR_REPOSITORY_HELM: "isbe-helm-charts"
+          ECR_REPOSITORY: ${{ vars.APP_NAME }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.tag_name }}
+          APP_NAME: ${{ vars.APP_NAME }}
+        run: |
+          echo "🚀 Pushing Helm chart to ECR repository"
+          echo "🏷️ Chart version: ${{ env.IMAGE_TAG }}" 
+          echo "🏷️ ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          echo "🏷️ ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+          echo "🏷️ Image tag: ${{ env.IMAGE_TAG }}"
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} | helm registry login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+          # Replace with env variables in values.yaml (ECR_REGISTRY, ECR_REPOSITORY, APP_NAME, IMAGE_TAG)
+          envsubst '$ECR_REGISTRY,$ECR_REPOSITORY,$APP_NAME,$IMAGE_TAG' < .helm/values.yaml > .helm/values.tmp.yaml
+          mv .helm/values.tmp.yaml .helm/values.yaml
+          helm package .helm --version ${{ env.IMAGE_TAG}} --app-version ${{ env.IMAGE_TAG}}
+          helm push ${APP_NAME}-${IMAGE_TAG}.tgz oci://${ECR_REGISTRY}/${ECR_REPOSITORY_HELM}
+          echo "📦 Helm chart: ${{ vars.APP_NAME }}-${{ env.IMAGE_TAG}}.tgz"
+          echo "🏷️ Pushed to: oci://${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_HELM }}/${APP_NAME}"
+          echo "🏷️ Tag ${{ env.IMAGE_TAG}} created and pushed to main branch successfully."
+          echo "✅ Helm chart pushed successfully."
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.inputs.tag_name }}
+        run: |
+          git tag -a $TAG_NAME -m "Release $TAG_NAME"
+          git push origin $TAG_NAME 
+          gh release create $TAG_NAME --target main -t $TAG_NAME -n "Release $TAG_NAME"
+
+  build-and-push-image:
+    needs: merge-tag-and-release
+    uses: ./.github/workflows/01-eks-aws-build-and-image.yml
+    with:
+      version_tag: ${{ github.event.inputs.tag_name }}
+      branch: main
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
