@@ -1,0 +1,39 @@
+{{ - if .Values.velero.enabled }}
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: {{ include "deploy-component.fullname" . }}-schedule
+  # Importante: Los Schedules deben crearse en el mismo namespace que Velero.
+  namespace: velero
+  labels:
+    {{- include "deploy-component.labels" . | nindent 4 }}
+spec:
+  # La frecuencia con la que se ejecutará el backup.
+  schedule: "44 4 * * *" # Todos los días a las 04:44 AM UTC
+  # 'template' define cómo será el backup que se cree en cada ejecución.
+  template:
+    # También es una buena práctica incluir explícitamente el namespace de tu aplicación.
+#    includedNamespaces:
+#      - xxxx
+    includedResources:
+      - 'volumeattachments'
+      - 'persistentvolumeclaims'
+
+    # Esta etiqueta debe coincidir con las etiquetas de TODOS los recursos
+    # de tu aplicación (Deployment, Service, PVC, etc.).
+    # El helper 'app.kubernetes.io/name' es ideal para esto.
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: {{ include "deploy-component.name" . }}
+
+    # Le decimos a Velero que haga snapshots de los volúmenes persistentes.
+    snapshotVolumes: true
+
+    # Define por cuánto tiempo se conservará este backup.
+    # Tiempo de Retención (Time To Live) para cada backup.
+    # Formato: 720h0m0s (30 días), 168h0m0s (7 días), etc.
+    ttl: "168h0m0s"
+    
+    # El 'storageLocation' por defecto se usará si no se especifica.
+    # storageLocation: default
+{{- end }}

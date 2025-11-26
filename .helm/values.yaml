@@ -47,6 +47,9 @@ persistence:
   volumeMode: Filesystem
   size: 1Gi
 
+velero:
+  enabled: true
+
 # Configuración del Ingress (ALB)
 ingress:
   enabled: true
