@@ -12,6 +12,7 @@ spec:
   {{- if .Values.strategy.type }}
   strategy:
     type: {{ .Values.strategy.type }}
+  {{- end }}
   template:
     metadata:
       labels:
