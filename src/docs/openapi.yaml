@@ -72,11 +72,52 @@ paths:
           $ref: '#/components/responses/Forbidden'
 
   /api/managements/{organization_identifier}/documents:
-    put:
-      summary: Actualizar documentos/anexos (Usuario)
+    get:
+      summary: Descargar documento/contrato
       description: >
-        Permite a usuarios de la organización actualizar/añadir documentos y anexos.
-        Solo se pueden modificar archivos, NO el role_id.
+        Descarga el archivo del contrato de un management.
+        Retorna el archivo binario con los headers apropiados para descarga.
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización (PK)
+      responses:
+        '200':
+          description: Archivo descargado exitosamente
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/msword:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Management o archivo no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/managements/{organization_identifier}/contract:
+    put:
+      summary: Actualizar contrato (Usuario)
+      description: >
+        Permite a usuarios de la organización actualizar el archivo del contrato.
+        Solo se puede modificar el archivo, NO el role_id ni selected_role.
       tags: [Managements]
       parameters:
         - in: path
@@ -90,10 +131,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ManagementUpdateDocuments'
+              $ref: '#/components/schemas/ManagementUpdateContract'
       responses:
         '200':
-          description: Documentos actualizados exitosamente
+          description: Contrato actualizado exitosamente
           content:
             application/json:
               schema:
@@ -303,16 +344,13 @@ components:
           type: string
           example: "ORG-2024-001"
           description: Identificador único de la organización (PK - solo hay uno por compañía)
-        principal_contract:
+        contract:
           $ref: '#/components/schemas/DocumentMetadata'
-        operator_anexo:
-          allOf:
-            - $ref: '#/components/schemas/DocumentMetadata'
-          nullable: true
-        auditor_anexo:
-          allOf:
-            - $ref: '#/components/schemas/DocumentMetadata'
-          nullable: true
+        selected_role:
+          type: string
+          enum: [developer, operator, auditor]
+          example: "developer"
+          description: Rol seleccionado por la organización al crear el management
         role_id:
           type: integer
           nullable: true
@@ -329,45 +367,37 @@ components:
       type: object
       required:
         - organization_identifier
-        - principal_contract
+        - selected_role
+        - contract
       properties:
         organization_identifier:
           type: string
           example: "ORG-2024-001"
           description: Identificador único de la organización (PK)
-        principal_contract:
+        selected_role:
+          type: string
+          enum: [developer, operator, auditor]
+          example: "developer"
+          description: Rol que la organización desea solicitar
+        contract:
           type: string
           format: binary
           description: Archivo del contrato principal (PDF, DOC, etc.) - REQUERIDO
-        operator_anexo:
-          type: string
-          format: binary
-          description: Archivo anexo del operador (opcional)
-        auditor_anexo:
-          type: string
-          format: binary
-          description: Archivo anexo del auditor (opcional)
       description: >
         Schema para crear un management. NO incluye role_id - solo admin puede asignarlo después.
 
-    ManagementUpdateDocuments:
+    ManagementUpdateContract:
       type: object
+      required:
+        - contract
       description: >
-        Schema para actualizar documentos/anexos (usuarios).
-        Todos los campos son opcionales. Al menos un archivo debe ser enviado.
+        Schema para actualizar el contrato (usuarios).
+        Solo se puede actualizar el archivo del contrato.
       properties:
-        principal_contract:
+        contract:
           type: string
           format: binary
           description: Nuevo archivo del contrato principal
-        operator_anexo:
-          type: string
-          format: binary
-          description: Nuevo archivo anexo del operador
-        auditor_anexo:
-          type: string
-          format: binary
-          description: Nuevo archivo anexo del auditor
 
     ManagementUpdateRole:
       type: object

@@ -4,7 +4,8 @@ import { USER_ROLES } from '../../settings.js';
 import {
   uploadMiddleware,
   createManagement,
-  updateManagementDocuments,
+  downloadManagementDocument,
+  updateManagementContract,
   updateManagementRole,
   getManagementByOrganization,
   getAllManagementsAdmin,
@@ -16,8 +17,11 @@ const managementsRouter: Router = Router();
 // POST - Crear un nuevo management con archivos (sin role_id)
 managementsRouter.post('/', uploadMiddleware, createManagement);
 
-// PUT - Actualizar documentos/anexos (para usuarios de la organización)
-managementsRouter.put('/:organization_identifier/documents', uploadMiddleware, updateManagementDocuments);
+// GET - Descargar el documento/contrato de un management
+managementsRouter.get('/:organization_identifier/documents', downloadManagementDocument);
+
+// PUT - Actualizar contrato (para usuarios de la organización)
+managementsRouter.put('/:organization_identifier/contract', uploadMiddleware, updateManagementContract);
 
 // PUT - Asignar/cambiar rol (solo admin)
 // managementsRouter.put('/:organization_identifier/role', authorize({ rolesAny: [USER_ROLES.ADMIN] }), updateManagementRole);
