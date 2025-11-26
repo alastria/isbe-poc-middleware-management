@@ -16,9 +16,8 @@ type DocumentMetadata = {
 
 type ManagementInput = {
   organization_identifier: string;
-  principal_contract: DocumentMetadata;
-  operator_anexo?: DocumentMetadata;
-  auditor_anexo?: DocumentMetadata;
+  contract: DocumentMetadata;
+  selected_role: RoleType;
   role_id?: number; // Opcional, se añade después mediante modificación
 };
 
