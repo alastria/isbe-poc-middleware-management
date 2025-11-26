@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "isbe-poc-middleware-managements.fullname" . }}
+  name: {{ include "deploy-component.fullname" . }}
   annotations:
     # Anotaciones para el AWS Load Balancer Controller
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
@@ -15,7 +15,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "isbe-poc-middleware-managements.fullname" . }}
+                name: {{ include "deploy-component.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
           # No permitir acceso a /metrics desde el ALB

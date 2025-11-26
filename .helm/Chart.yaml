@@ -1,5 +1,5 @@
 apiVersion: v2
-name: isbe-poc-middleware-managements
+name: isbe-poc-middleware-support
 description: A Helm chart for Kubernetes (ISBE EKS ISBE)
 type: application
 version: 1.0.0

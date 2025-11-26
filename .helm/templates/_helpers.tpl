@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "isbe-poc-middleware-managements.name" -}}
+{{- define "deploy-component.name" -}}
 {{- default .Chart.Name .Values.appName | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "isbe-poc-middleware-managements.fullname" -}}
+{{- define "deploy-component.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "isbe-poc-middleware-managements.chart" -}}
+{{- define "deploy-component.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "isbe-poc-middleware-managements.labels" -}}
-helm.sh/chart: {{ include "isbe-poc-middleware-managements.chart" . }}
-{{ include "isbe-poc-middleware-managements.selectorLabels" . }}
+{{- define "deploy-component.labels" -}}
+helm.sh/chart: {{ include "deploy-component.chart" . }}
+{{ include "deploy-component.labels.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -43,7 +43,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "isbe-poc-middleware-managements.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "isbe-poc-middleware-managements.name" . }}
+{{- define "deploy-component.labels.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "deploy-component.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

@@ -1,6 +1,6 @@
 replicaCount: 1
 
-fullnameOverride: "isbe-poc-middleware-managements"
+fullnameOverride: ${APP_NAME}
 
 image:
   repository: ${ECR_REGISTRY}/${ECR_REPOSITORY} # Reemplaza con tu imagen de Docker
@@ -23,8 +23,7 @@ app:
     KEYCLOAK_ISSUER: "${KEYCLOAK_ISSUER}"
     KEYCLOAK_AUDIENCE: "${KEYCLOAK_AUDIENCE}"
     PORT: 3000
-  secretKeyRefs: # Lista de claves en el Secret que se referenciarán como variables de entorno
-    - DATABASE_URL
+
 
 resources:
   limits:
@@ -51,9 +50,9 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     # Al usar group.name, los tags deben de ser iguales.
-    alb.ingress.kubernetes.io/tags: Application=isbe-apps, Environment=${EKS_CLUSTER_NAME}
+    alb.ingress.kubernetes.io/tags: Application=isbe-apps
     # Opcional: Para usar un certificado ACM existente
-    alb.ingress.kubernetes.io/certificate-arn: ${ARN_CERT}
+    # alb.ingress.kubernetes.io/certificate-arn: ${ARN_CERT}
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
     #alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-Res-2021-06

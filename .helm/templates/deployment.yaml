@@ -1,38 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "isbe-poc-middleware-managements.fullname" $ }}
+  name: {{ include "deploy-component.fullname" $ }}
   labels:
-    {{- include "isbe-poc-middleware-managements.labels" . | nindent 4 }}
+    {{- include "deploy-component.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "isbe-poc-middleware-managements.selectorLabels" . | nindent 6 }}
+      {{- include "deploy-component.labels.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "isbe-poc-middleware-managements.selectorLabels" . | nindent 8 }}
+        {{- include "deploy-component.labels.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ include "deploy-component.name" $ }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.app.port }}
+{{- if or (and .Values.app.envs (gt (len .Values.app.envs) 0)) (and .Values.secrets (gt (len .Values.secrets) 0)) }}
           env:
           {{- range $key, $value := .Values.app.envs }}
             - name: {{ $key }}
               value: {{ $value | quote }}
           {{- end }}
-          {{- range $key := .Values.app.secretKeyRefs }}
+          {{- range $key, $value := .Values.secrets }}
             - name: {{ $key }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "isbe-poc-middleware-managements.fullname" $ }}
+                  name: {{ include "deploy-component.fullname" $ }}
                   key: {{ $key }}
           {{- end }}
+{{- end }}
           livenessProbe:
             httpGet:
               path: /health

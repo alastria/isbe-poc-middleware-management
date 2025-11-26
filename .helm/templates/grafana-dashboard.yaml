@@ -2,7 +2,7 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: {{ include "isbe-poc-middleware-managements.fullname" . }}-dashboard
+  name: {{ include "deploy-component.fullname" . }}-dashboard
   labels:
     # Etiqueta para que la instancia de Grafana descubra este dashboard
     app: grafana
@@ -31,7 +31,7 @@ spec:
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
           "targets": [
             {
-              "expr": "irate(http_requests_total{job=\"{{ include "isbe-poc-middleware-managements.fullname" . }}\"}[5m])",
+              "expr": "irate(http_requests_total{job=\"{{ include "deploy-component.fullname" . }}\"}[5m])",
               "legendFormat": "{{`{{`}} code {{`}}`}}",
               "refId": "A"
             }

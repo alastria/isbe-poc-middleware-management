@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "isbe-poc-middleware-managements.fullname" . }}
+  name: {{ include "deploy-component.fullname" . }}
   labels:
     # Esta etiqueta es importante para que Prometheus descubra este ServiceMonitor
     release: prometheus
@@ -10,9 +10,9 @@ spec:
   selector:
     matchLabels:
       # Debe coincidir con la etiqueta del Service que creamos
-      app: {{ include "isbe-poc-middleware-managements.name" . }}
+      app: {{ include "deploy-component.name" . }}
   endpoints:
-  - port: http # El nombre del puerto de métricas en el Service, en este caso es 'http' y no 'metrics', ya que el mismo puerto se usa para la app y para las métricas
+  - port: http # El nombre del puerto de métricas en el Service, se usa el mismo nombre que el Service principal 'http'
     interval: 60s
     path: /metrics # La ruta donde tu app expone las métricas
 {{- end }}
