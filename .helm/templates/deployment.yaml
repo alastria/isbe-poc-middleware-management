@@ -9,6 +9,9 @@ spec:
   selector:
     matchLabels:
       {{- include "deploy-component.labels.selectorLabels" . | nindent 6 }}
+  {{- if .Values.strategy.type }}
+  strategy:
+    type: {{ .Values.strategy.type }}
   template:
     metadata:
       labels:

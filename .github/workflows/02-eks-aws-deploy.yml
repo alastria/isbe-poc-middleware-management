@@ -63,6 +63,10 @@ jobs:
           echo "🛑 HOST_NAME is not set in variables"
           exit 1
         fi
+        if [[ -z "${{ vars.ARN_CERT }}" ]]; then
+          echo "🛑 ARN_CERT is not set in variables"
+          exit 1
+        fi
         if [[ -z "${{ vars.ALLOWED_ORIGINS }}" ]]; then
           echo "🛑 ALLOWED_ORIGINS is not set in variables"
           exit 1
@@ -124,6 +128,7 @@ jobs:
         AWS_REGION: ${{ vars.AWS_REGION }}
         HOST_NAME: ${{ vars.HOST_NAME }}
         EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+        ARN_CERT: ${{ vars.ARN_CERT }}
         ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
         PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         AUTH_N_ENABLED: ${{ vars.AUTH_N_ENABLED }}
