@@ -39,6 +39,14 @@ service:
   # Puerto donde tu aplicación expone las métricas de Prometheus
   # metricsPort: 9113
 
+persistence:
+  enabled: true
+  storageClass: "pod-storage" # Reemplaza con tu StorageClass, previamente creado en EKS
+  existingClaim: ""
+  accessMode: ReadWriteOnce
+  volumeMode: Filesystem
+  size: 1Gi
+
 # Configuración del Ingress (ALB)
 ingress:
   enabled: true

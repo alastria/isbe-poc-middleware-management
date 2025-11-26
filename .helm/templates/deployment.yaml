@@ -45,7 +45,12 @@ spec:
 #            - name: metrics
 #              containerPort: 9113
           # ... resto de la configuración del contenedor ...
-#      volumes:
-#        - name: mi-app-data-volume
-#          persistentVolumeClaim:
-#            claimName: mi-app-pvc
+{{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: app-data-volume
+              mountPath: /data  # Ajusta esta ruta según las necesidades de tu aplicación
+      volumes:
+        - name: app-data-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "deploy-component.fullname" .) }}
+{{- end }}
