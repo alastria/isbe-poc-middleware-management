@@ -1,8 +1,8 @@
-{{ - if .Values.velero.enabled }}
+{{- if .Values.velero.enabled }}
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
-  name: {{ include 'deploy-component.fullname' . | quote }}
+  name: {{ include 'deploy-component.fullname' . | printf "%s-schedule" }}
   # Importante: Los Schedules deben crearse en el mismo namespace que Velero.
   namespace: velero
   labels:
