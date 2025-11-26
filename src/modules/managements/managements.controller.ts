@@ -135,22 +135,28 @@ export const updateManagementContract: RequestHandler = async (req, res) => {
 // PUT para admin: Asignar rol y políticas
 export const updateManagementRole: RequestHandler = async (req, res) => {
   const { organization_identifier } = req.params ?? {};
-  const { role_id } = req.body ?? {};
+  const { role_type } = req.body ?? {};
 
   if (!organization_identifier) {
     return res.status(400).json({ error: 'organization_identifier is required' });
   }
 
-  if (!role_id) {
-    return res.status(400).json({ error: 'role_id is required' });
+  if (!role_type) {
+    return res.status(400).json({ error: 'role_type is required' });
+  }
+
+  // Validar que role_type sea válido
+  const validRoleTypes = ['developer', 'operator', 'auditor'];
+  if (!validRoleTypes.includes(role_type)) {
+    return res.status(400).json({
+      error: 'Invalid role_type. Must be one of: developer, operator, auditor'
+    });
   }
 
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
-    const row = await managementsService.update(organization_identifier, {
-      role_id: parseInt(role_id, 10)
-    });
+    const row = await managementsService.updateRoleByType(organization_identifier, role_type);
 
     return res.status(200).json(row);
   } catch (error) {
