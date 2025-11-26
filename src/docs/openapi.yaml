@@ -161,6 +161,8 @@ paths:
       summary: Asignar/cambiar rol (Solo Admin)
       description: >
         Permite al administrador asignar o cambiar el rol de un management.
+        Se envía el tipo de rol (developer, operator, auditor) y automáticamente
+        se busca y asigna el role_id correspondiente de la tabla roles.
         Al asignar un rol, se aplican las políticas asociadas.
         Solo accesible para administradores.
       tags: [Managements]
@@ -402,14 +404,16 @@ components:
     ManagementUpdateRole:
       type: object
       required:
-        - role_id
+        - role_type
       properties:
-        role_id:
-          type: integer
-          example: 1
-          description: ID del rol a asignar (requerido)
+        role_type:
+          type: string
+          enum: [developer, operator, auditor]
+          example: developer
+          description: Tipo de rol a asignar (developer, operator o auditor)
       description: >
         Schema para asignar/cambiar rol (solo admin).
+        Se envía el tipo de rol y automáticamente se busca y asigna el role_id correspondiente.
         Al asignar un rol, se aplican automáticamente las políticas asociadas.
 
     Error:
