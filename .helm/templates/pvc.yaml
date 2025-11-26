@@ -14,20 +14,3 @@ spec:
    requests:
      storage: {{ .Values.persistence.size | quote }}
  {{- end }}
-
- apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-apps-pvc
-  namespace: postgres
-  labels:
-    app.kubernetes.io/name: postgres
-    app.kubernetes.io/namespace: postgres
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: postgres-storage
-  volumeMode: Filesystem
