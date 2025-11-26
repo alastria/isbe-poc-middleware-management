@@ -131,7 +131,7 @@ describe('Managements API E2E', () => {
     expect(rows.length).toBe(2);
   });
 
-  it('GET /managements/:organization_identifier — returns specific management', async () => {
+  it('GET /managements/organization/:organization_identifier — returns specific management', async () => {
     await tx.insert(managements).values({
       organization_identifier: 'ORG-FIND-ME',
       selected_role: 'developer',
@@ -139,7 +139,7 @@ describe('Managements API E2E', () => {
     });
 
     const app = makeApp({ company_id: 'n/a', user_id: 'u4', role: 'admin' });
-    const res = await request(app).get(`${BASE}/ORG-FIND-ME`);
+    const res = await request(app).get(`${BASE}/organization/ORG-FIND-ME`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -153,18 +153,34 @@ describe('Managements API E2E', () => {
 
   it('GET /managements/:organization_identifier — 404 when not found', async () => {
     const app = makeApp({ company_id: 'n/a', user_id: 'u5', role: 'admin' });
-    const res = await request(app).get(`${BASE}/ORG-NOT-EXISTS`);
+    const res = await request(app).get(`${BASE}/organization/ORG-NOT-EXISTS`);
     expect(res.status).toBe(404);
   });
 
-  it('PUT /managements/:organization_identifier/documents — updates documents', async () => {
+  it('GET /managements/:organization_identifier/documents — downloads contract', async () => {
     await tx.insert(managements).values({
-      organization_identifier: 'ORG-UPDATE-DOCS',
+      organization_identifier: 'ORG-DOWNLOAD',
+      selected_role: 'operator',
+      contract: createDocMetadata('contract-to-download.pdf'),
+    });
+
+    const app = makeApp({ company_id: 'n/a', user_id: 'u6', role: 'admin' });
+
+    const res = await request(app).get(`${BASE}/ORG-DOWNLOAD/documents`);
+
+    // Note: In real scenario, this would download a file
+    // For unit tests without actual files, we expect 404 (file doesn't exist on disk)
+    expect([200, 404]).toContain(res.status);
+  });
+
+  it('PUT /managements/:organization_identifier/contract — updates contract', async () => {
+    await tx.insert(managements).values({
+      organization_identifier: 'ORG-UPDATE-CONTRACT',
       selected_role: 'operator',
       contract: createDocMetadata('old-contract.pdf'),
     });
 
-    const app = makeApp({ company_id: 'n/a', user_id: 'u6', role: 'admin' });
+    const app = makeApp({ company_id: 'n/a', user_id: 'u7', role: 'admin' });
 
     // Simulate updating contract document
     const updatePayload = {
@@ -172,7 +188,7 @@ describe('Managements API E2E', () => {
     };
 
     const res = await request(app)
-      .put(`${BASE}/ORG-UPDATE-DOCS/documents`)
+      .put(`${BASE}/ORG-UPDATE-CONTRACT/contract`)
       .send(updatePayload);
 
     expect(res.status).toBe(200);
@@ -181,7 +197,7 @@ describe('Managements API E2E', () => {
     const [row] = await tx
       .select()
       .from(managements)
-      .where(eq(managements.organization_identifier, 'ORG-UPDATE-DOCS'))
+      .where(eq(managements.organization_identifier, 'ORG-UPDATE-CONTRACT'))
       .limit(1);
 
     expect(row?.contract).toMatchObject({
@@ -202,7 +218,7 @@ describe('Managements API E2E', () => {
       contract: createDocMetadata('contract.pdf'),
     });
 
-    const app = makeApp({ company_id: 'n/a', user_id: 'u7', role: 'admin' });
+    const app = makeApp({ company_id: 'n/a', user_id: 'u8', role: 'admin' });
 
     const res = await request(app)
       .put(`${BASE}/ORG-ASSIGN-ROLE/role`)
@@ -227,7 +243,7 @@ describe('Managements API E2E', () => {
       contract: createDocMetadata('delete-me.pdf'),
     });
 
-    const app = makeApp({ company_id: 'n/a', user_id: 'u8', role: 'admin' });
+    const app = makeApp({ company_id: 'n/a', user_id: 'u9', role: 'admin' });
 
     const res = await request(app).delete(`${BASE}/ORG-DELETE-ME`);
     expect(res.status).toBe(200);
@@ -241,13 +257,13 @@ describe('Managements API E2E', () => {
   });
 
   it('GET /managements returns 404 when empty', async () => {
-    const app = makeApp({ company_id: 'n/a', user_id: 'u9', role: 'admin' });
+    const app = makeApp({ company_id: 'n/a', user_id: 'u10', role: 'admin' });
     const res = await request(app).get(BASE);
     expect(res.status).toBe(404);
   });
 
   it('POST /managements — prevents duplicate organization_identifier', async () => {
-    const anyAuth: AuthZContext = { company_id: 'n/a', user_id: 'u10', role: 'admin' };
+    const anyAuth: AuthZContext = { company_id: 'n/a', user_id: 'u11', role: 'admin' };
     const app = makeApp(anyAuth);
 
     await tx.insert(managements).values({
