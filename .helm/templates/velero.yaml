@@ -2,7 +2,7 @@
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
-  name: {{ include "deploy-component.fullname" . }}-schedule
+  name: "{{ include 'deploy-component.fullname' .   }}-schedule"
   # Importante: Los Schedules deben crearse en el mismo namespace que Velero.
   namespace: velero
   labels:
