@@ -16,8 +16,7 @@ spec:
 #    includedNamespaces:
 #      - xxxx
     includedResources:
-      - 'volumeattachments'
-      - 'persistentvolumeclaims'
+      - '*'
 
     # Esta etiqueta debe coincidir con las etiquetas de TODOS los recursos
     # de tu aplicación (Deployment, Service, PVC, etc.).
