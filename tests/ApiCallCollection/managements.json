@@ -1,0 +1,189 @@
+{
+  "info": {
+    "name": "ISBE POC - Managements API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección para pruebas de API de gestiones (Node + Express + TS + Multer)"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "List All Managements",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/managements",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Management (with files)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "organization_identifier",
+              "value": "ORG-001",
+              "type": "text"
+            },
+            {
+              "key": "selected_role",
+              "value": "developer",
+              "type": "text"
+            },
+            {
+              "key": "contract",
+              "type": "file",
+              "src": "/path/to/contract.pdf"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/managements",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Management by Organization Identifier",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/managements/ORG-001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements", "ORG-001"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Management Documents",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "contract",
+              "type": "file",
+              "src": "/path/to/new-contract.pdf"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/managements/ORG-001/documents",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements", "ORG-001", "documents"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Management Role (Admin)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role_id\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/managements/ORG-001/role",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements", "ORG-001", "role"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Management",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <JWT_TOKEN>",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/managements/ORG-001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "managements", "ORG-001"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

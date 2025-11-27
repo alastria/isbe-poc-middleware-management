@@ -1,5 +1,7 @@
 import { type RequestHandler } from 'express';
 import type { Multer } from 'multer';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 import { getContainer } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import { ManagementsService } from './managements.service.js';
@@ -7,45 +9,40 @@ import { upload, generateFileMetadata } from '../../utils/fileStorage.js';
 
 // Middleware de multer para manejar subida de archivos
 export const uploadMiddleware: ReturnType<Multer['fields']> = upload.fields([
-  { name: 'principal_contract', maxCount: 1 },
-  { name: 'operator_anexo', maxCount: 1 },
-  { name: 'auditor_anexo', maxCount: 1 }
+  { name: 'contract', maxCount: 1 }
 ]);
 
 export const createManagement: RequestHandler = async (req, res) => {
-  const { organization_identifier } = req.body ?? {};
+  const { organization_identifier, selected_role } = req.body ?? {};
   const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
   if (!organization_identifier) {
     return res.status(400).json({ error: 'organization_identifier is required' });
   }
 
-  if (!files?.principal_contract || files.principal_contract.length === 0) {
-    return res.status(400).json({ error: 'principal_contract file is required' });
+  if (!selected_role) {
+    return res.status(400).json({ error: 'selected_role is required' });
   }
 
-  // Generar metadata de los archivos subidos
-  const principalContractFile = files.principal_contract[0];
-  if (!principalContractFile) {
-    return res.status(400).json({ error: 'principal_contract file is invalid' });
+  if (!files?.contract || files.contract.length === 0) {
+    return res.status(400).json({ error: 'contract file is required' });
   }
 
-  const principal_contract = generateFileMetadata(principalContractFile);
-  const operator_anexo = files.operator_anexo && files.operator_anexo.length > 0 && files.operator_anexo[0]
-    ? generateFileMetadata(files.operator_anexo[0])
-    : undefined;
-  const auditor_anexo = files.auditor_anexo && files.auditor_anexo.length > 0 && files.auditor_anexo[0]
-    ? generateFileMetadata(files.auditor_anexo[0])
-    : undefined;
+  // Generar metadata del archivo subido
+  const contractFile = files.contract[0];
+  if (!contractFile) {
+    return res.status(400).json({ error: 'contract file is invalid' });
+  }
+
+  const contract = generateFileMetadata(contractFile);
 
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
     const row = await managementsService.create({
       organization_identifier,
-      principal_contract,
-      ...(operator_anexo && { operator_anexo }),
-      ...(auditor_anexo && { auditor_anexo })
+      contract,
+      selected_role
     });
 
     return res.status(201).json(row);
@@ -58,8 +55,49 @@ export const createManagement: RequestHandler = async (req, res) => {
   }
 };
 
-// PUT para usuarios: Actualizar documentos/anexos
-export const updateManagementDocuments: RequestHandler = async (req, res) => {
+// GET para descargar el documento/contrato
+export const downloadManagementDocument: RequestHandler = async (req, res) => {
+  const { organization_identifier } = req.params ?? {};
+
+  if (!organization_identifier) {
+    return res.status(400).json({ error: 'organization_identifier is required' });
+  }
+
+  const managementsService = getContainer().resolve(ManagementsService);
+
+  try {
+    const management = await managementsService.getByOrganization(organization_identifier);
+
+    if (!management.contract || typeof management.contract !== 'object') {
+      return res.status(404).json({ error: 'Contract document not found' });
+    }
+
+    const contractMetadata = management.contract as any;
+    const filePath = path.join(process.cwd(), contractMetadata.url);
+
+    // Verificar que el archivo existe
+    try {
+      await fs.access(filePath);
+    } catch {
+      return res.status(404).json({ error: 'Contract file not found on disk' });
+    }
+
+    // Enviar el archivo para descarga
+    res.setHeader('Content-Type', contractMetadata.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${contractMetadata.filename}"`);
+
+    return res.sendFile(filePath);
+  } catch (error) {
+    if (error instanceof CustomError && error.code === ErrorCode.NOT_FOUND) {
+      return res.status(404).json({ code: error.code, error: error.message });
+    }
+    console.error('downloadManagementDocument error:', error);
+    return res.status(500).json({ error: 'Failed to download document' });
+  }
+};
+
+// PUT para usuarios: Actualizar contrato
+export const updateManagementContract: RequestHandler = async (req, res) => {
   const { organization_identifier } = req.params ?? {};
   const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
@@ -67,29 +105,21 @@ export const updateManagementDocuments: RequestHandler = async (req, res) => {
     return res.status(400).json({ error: 'organization_identifier is required' });
   }
 
-  if (!files || Object.keys(files).length === 0) {
-    return res.status(400).json({ error: 'At least one file is required' });
+  if (!files?.contract || files.contract.length === 0) {
+    return res.status(400).json({ error: 'contract file is required' });
   }
 
   const managementsService = getContainer().resolve(ManagementsService);
 
-  // Generar metadata solo para los archivos que se hayan subido
-  const updateData: any = {};
-
-  if (files?.principal_contract && files.principal_contract.length > 0 && files.principal_contract[0]) {
-    updateData.principal_contract = generateFileMetadata(files.principal_contract[0]);
+  const contractFile = files.contract[0];
+  if (!contractFile) {
+    return res.status(400).json({ error: 'contract file is invalid' });
   }
 
-  if (files?.operator_anexo && files.operator_anexo.length > 0 && files.operator_anexo[0]) {
-    updateData.operator_anexo = generateFileMetadata(files.operator_anexo[0]);
-  }
-
-  if (files?.auditor_anexo && files.auditor_anexo.length > 0 && files.auditor_anexo[0]) {
-    updateData.auditor_anexo = generateFileMetadata(files.auditor_anexo[0]);
-  }
+  const contract = generateFileMetadata(contractFile);
 
   try {
-    const row = await managementsService.update(organization_identifier, updateData);
+    const row = await managementsService.update(organization_identifier, { contract });
 
     return res.status(200).json(row);
   } catch (error) {
@@ -97,30 +127,36 @@ export const updateManagementDocuments: RequestHandler = async (req, res) => {
       const statusCode = error.code === ErrorCode.NOT_FOUND ? 404 : 400;
       return res.status(statusCode).json({ code: error.code, error: error.message });
     }
-    console.error('updateManagementDocuments error:', error);
-    return res.status(500).json({ error: 'Failed to update management documents' });
+    console.error('updateManagementContract error:', error);
+    return res.status(500).json({ error: 'Failed to update contract' });
   }
 };
 
 // PUT para admin: Asignar rol y políticas
 export const updateManagementRole: RequestHandler = async (req, res) => {
   const { organization_identifier } = req.params ?? {};
-  const { role_id } = req.body ?? {};
+  const { role_type } = req.body ?? {};
 
   if (!organization_identifier) {
     return res.status(400).json({ error: 'organization_identifier is required' });
   }
 
-  if (!role_id) {
-    return res.status(400).json({ error: 'role_id is required' });
+  if (!role_type) {
+    return res.status(400).json({ error: 'role_type is required' });
+  }
+
+  // Validar que role_type sea válido
+  const validRoleTypes = ['developer', 'operator', 'auditor'];
+  if (!validRoleTypes.includes(role_type)) {
+    return res.status(400).json({
+      error: 'Invalid role_type. Must be one of: developer, operator, auditor'
+    });
   }
 
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
-    const row = await managementsService.update(organization_identifier, {
-      role_id: parseInt(role_id, 10)
-    });
+    const row = await managementsService.updateRoleByType(organization_identifier, role_type);
 
     return res.status(200).json(row);
   } catch (error) {

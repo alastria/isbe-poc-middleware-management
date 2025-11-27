@@ -23,9 +23,8 @@ export const roles = pgTable('roles', {
 export const managements = pgTable('managements', {
   id: serial('id').primaryKey(),
   organization_identifier: text('organization_identifier').notNull().unique(),
-  principal_contract: jsonb('principal_contract').notNull(), // Metadata del documento: {url, filename, size, mimeType}
-  operator_anexo: jsonb('operator_anexo'), // Metadata del documento (opcional)
-  auditor_anexo: jsonb('auditor_anexo'), // Metadata del documento (opcional)
+  contract: jsonb('contract').notNull(), // Metadata del documento: {url, filename, size, mimeType}
+  selected_role: roleTypeEnum('selected_role').notNull(),
   role_id: integer('role_id')
     .references(() => roles.id, { onDelete: 'restrict' }), // Ahora es opcional, se añade después
   created_at: timestamp('created_at').notNull().defaultNow(),
