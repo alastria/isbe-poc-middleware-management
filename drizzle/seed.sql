@@ -44,7 +44,12 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "Identity",
       "type": "organization"
-    }]'::jsonb),
+    },{
+      "action": [ "Create","Update","Delete" ],
+      "domain": "ISBE",
+      "function": "ProductOffering",
+      "type": "organization"
+}]'::jsonb),
 
   ('developer', '[{
       "action": ["*"],
@@ -98,7 +103,12 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "Identity",
       "type": "organization"
-    }]'::jsonb),
+    },{
+      "action": [ "Create","Update","Delete" ],
+      "domain": "ISBE",
+      "function": "ProductOffering",
+      "type": "organization"
+}]'::jsonb),
 
   ('op_exec', '[{
       "action": ["*"],
@@ -161,7 +171,12 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "Identity",
       "type": "organization"
-    }]'::jsonb),
+    },{
+      "action": [ "Create","Update","Delete" ],
+      "domain": "ISBE",
+      "function": "ProductOffering",
+      "type": "organization"
+}]'::jsonb),
 
   ('auditor', '[{
       "action": ["read"],
