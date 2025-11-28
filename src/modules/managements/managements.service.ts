@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { DB_TOKEN } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import * as schema from '../../db/schema.js';
-import { managements, roles, type RoleType } from '../../db/schema.js';
+import { managements, roles, type RoleType, type SelectedRole } from '../../db/schema.js';
 
 type DocumentMetadata = {
   url: string;
@@ -17,7 +17,7 @@ type DocumentMetadata = {
 type ManagementInput = {
   organization_identifier: string;
   contract: DocumentMetadata;
-  selected_role: RoleType;
+  selected_role: SelectedRole;
   role_id?: number; // Opcional, se añade después mediante modificación
 };
 
@@ -25,32 +25,88 @@ type ManagementInput = {
 export class ManagementsService {
   constructor(@inject(DB_TOKEN) private readonly db: NodePgDatabase<typeof schema>) {}
 
+  // Función auxiliar para determinar el tipo de rol basado en selected_role
+  private determineRoleType(selectedRole: SelectedRole): RoleType | null {
+    const { principal, auditor, proveedor, operator_exec, operator_cons } = selectedRole;
+
+    // Si no está principal, no hay rol válido
+    if (!principal) {
+      return null;
+    }
+
+    // Contar cuántos roles adicionales están activos
+    const additionalRoles = [auditor, proveedor, operator_exec, operator_cons].filter(Boolean).length;
+
+    // Solo principal -> basic
+    if (additionalRoles === 0) {
+      return 'basic';
+    }
+
+    // Principal + un rol adicional
+    if (additionalRoles === 1) {
+      if (proveedor) return 'developer';
+      if (operator_exec) return 'op_exec';
+      if (auditor) return 'auditor';
+      if (operator_cons) return 'op_cons';
+    }
+
+    // Si hay múltiples roles adicionales, no asignamos automáticamente
+    // El admin tendrá que decidir manualmente
+    return null;
+  }
+
   async create(input: ManagementInput) {
     try {
       let roleId = input.role_id;
+      let needReview = false;
+      let reasonReview: string | null = null;
 
-      // Si selected_role es 'operator' o 'developer', asignar automáticamente el role_id
-      if ((input.selected_role === 'operator' || input.selected_role === 'developer') && !roleId) {
-        const [role] = await this.db
-          .select()
-          .from(roles)
-          .where(eq(roles.type, input.selected_role))
-          .limit(1);
+      // Si no se proporciona role_id, intentar determinar automáticamente
+      if (!roleId && input.selected_role) {
+        const roleType = this.determineRoleType(input.selected_role);
 
-        if (role) {
-          roleId = role.id;
+        if (roleType) {
+          // Buscar el role_id correspondiente
+          const [role] = await this.db
+            .select()
+            .from(roles)
+            .where(eq(roles.type, roleType))
+            .limit(1);
+
+          if (role) {
+            roleId = role.id;
+          }
+
+          // Si el rol es auditor o op_cons, marcar para revisión por ISBE
+          if (roleType === 'auditor' || roleType === 'op_cons') {
+            needReview = true;
+            reasonReview = 'Requires review by ISBE';
+          }
         }
       }
 
       const rows = await this.db
         .insert(managements)
-        .values({ ...input, role_id: roleId })
+        .values({
+          ...input,
+          role_id: roleId,
+          need_review: needReview,
+          reason_review: reasonReview
+        })
         .returning();
 
       if (!rows?.length) {
         throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Insert returned no rows.');
       }
-      return rows[0];
+
+      // Obtener el management completo con la foreign key del role
+      const createdId = rows[0]?.id;
+      if (!createdId) {
+        throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Created management has no ID.');
+      }
+
+      const management = await this.getById(createdId);
+      return management;
     } catch (err) {
       if (err instanceof CustomError) throw err;
       throw new CustomError(
@@ -72,12 +128,45 @@ export class ManagementsService {
       if (!rows?.length) {
         throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
       }
-      return rows[0];
+
+      // Obtener el management completo con la foreign key del role
+      const management = await this.getByOrganization(organization_identifier);
+      return management;
     } catch (err) {
       if (err instanceof CustomError) throw err;
       throw new CustomError(
         ErrorCode.DB_OPERATION_FAILED,
         'Failed to update management.',
+        err instanceof Error ? err : undefined,
+      );
+    }
+  }
+
+  async updateContract(organization_identifier: string, contract: DocumentMetadata) {
+    try {
+      const rows = await this.db
+        .update(managements)
+        .set({
+          contract,
+          need_review: true,
+          reason_review: 'Contract update, verification in progress.',
+          modified_at: new Date()
+        })
+        .where(eq(managements.organization_identifier, organization_identifier))
+        .returning();
+
+      if (!rows?.length) {
+        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
+      }
+
+      // Obtener el management completo con la foreign key del role
+      const management = await this.getByOrganization(organization_identifier);
+      return management;
+    } catch (err) {
+      if (err instanceof CustomError) throw err;
+      throw new CustomError(
+        ErrorCode.DB_OPERATION_FAILED,
+        'Failed to update contract.',
         err instanceof Error ? err : undefined,
       );
     }
@@ -92,6 +181,8 @@ export class ManagementsService {
           contract: managements.contract,
           selected_role: managements.selected_role,
           role_id: managements.role_id,
+          need_review: managements.need_review,
+          reason_review: managements.reason_review,
           created_at: managements.created_at,
           modified_at: managements.modified_at,
           role: {
@@ -144,6 +235,8 @@ export class ManagementsService {
           contract: managements.contract,
           selected_role: managements.selected_role,
           role_id: managements.role_id,
+          need_review: managements.need_review,
+          reason_review: managements.reason_review,
           created_at: managements.created_at,
           modified_at: managements.modified_at,
           role: {
@@ -174,7 +267,7 @@ export class ManagementsService {
     }
   }
 
-  async updateRoleByType(organization_identifier: string, roleType: RoleType) {
+  async updateRoleByType(organization_identifier: string, roleType: RoleType, selectedRole?: SelectedRole) {
     try {
       // Buscar el role_id correspondiente al type
       const [role] = await this.db
@@ -187,10 +280,23 @@ export class ManagementsService {
         throw new CustomError(ErrorCode.NOT_FOUND, `Role type '${roleType}' not found`);
       }
 
-      // Actualizar el management con el role_id encontrado
+      // Preparar actualización: role_id, limpiar need_review y reason_review
+      const updateData: any = {
+        role_id: role.id,
+        need_review: false,
+        reason_review: null,
+        modified_at: new Date()
+      };
+
+      // Si se proporciona selected_role, también actualizarlo
+      if (selectedRole) {
+        updateData.selected_role = selectedRole;
+      }
+
+      // Actualizar el management
       const rows = await this.db
         .update(managements)
-        .set({ role_id: role.id, modified_at: new Date() })
+        .set(updateData)
         .where(eq(managements.organization_identifier, organization_identifier))
         .returning();
 
@@ -198,7 +304,9 @@ export class ManagementsService {
         throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
       }
 
-      return rows[0];
+      // Obtener el management completo con la foreign key del role
+      const management = await this.getByOrganization(organization_identifier);
+      return management;
     } catch (err) {
       if (err instanceof CustomError) throw err;
       throw new CustomError(

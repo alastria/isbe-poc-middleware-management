@@ -6,6 +6,7 @@ import { getContainer } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import { ManagementsService } from './managements.service.js';
 import { upload, generateFileMetadata } from '../../utils/fileStorage.js';
+import type { SelectedRole } from '../../db/schema.js';
 
 // Middleware de multer para manejar subida de archivos
 export const uploadMiddleware: ReturnType<Multer['fields']> = upload.fields([
@@ -22,6 +23,27 @@ export const createManagement: RequestHandler = async (req, res) => {
 
   if (!selected_role) {
     return res.status(400).json({ error: 'selected_role is required' });
+  }
+
+  // Validar y parsear selected_role
+  let parsedSelectedRole: SelectedRole;
+  try {
+    parsedSelectedRole = typeof selected_role === 'string' ? JSON.parse(selected_role) : selected_role;
+
+    // Validar estructura
+    if (
+      typeof parsedSelectedRole.principal !== 'boolean' ||
+      typeof parsedSelectedRole.auditor !== 'boolean' ||
+      typeof parsedSelectedRole.proveedor !== 'boolean' ||
+      typeof parsedSelectedRole.operator_exec !== 'boolean' ||
+      typeof parsedSelectedRole.operator_cons !== 'boolean'
+    ) {
+      throw new Error('Invalid selected_role structure');
+    }
+  } catch (err) {
+    return res.status(400).json({
+      error: 'selected_role must be a valid JSON with principal, auditor, proveedor, operator_exec, operator_cons (all boolean)'
+    });
   }
 
   if (!files?.contract || files.contract.length === 0) {
@@ -42,7 +64,7 @@ export const createManagement: RequestHandler = async (req, res) => {
     const row = await managementsService.create({
       organization_identifier,
       contract,
-      selected_role
+      selected_role: parsedSelectedRole
     });
 
     return res.status(201).json(row);
@@ -119,7 +141,7 @@ export const updateManagementContract: RequestHandler = async (req, res) => {
   const contract = generateFileMetadata(contractFile);
 
   try {
-    const row = await managementsService.update(organization_identifier, { contract });
+    const row = await managementsService.updateContract(organization_identifier, contract);
 
     return res.status(200).json(row);
   } catch (error) {
@@ -135,7 +157,7 @@ export const updateManagementContract: RequestHandler = async (req, res) => {
 // PUT para admin: Asignar rol y políticas
 export const updateManagementRole: RequestHandler = async (req, res) => {
   const { organization_identifier } = req.params ?? {};
-  const { role_type } = req.body ?? {};
+  const { role_type, selected_role } = req.body ?? {};
 
   if (!organization_identifier) {
     return res.status(400).json({ error: 'organization_identifier is required' });
@@ -146,17 +168,41 @@ export const updateManagementRole: RequestHandler = async (req, res) => {
   }
 
   // Validar que role_type sea válido
-  const validRoleTypes = ['developer', 'operator', 'auditor'];
+  const validRoleTypes = ['basic', 'developer', 'op_exec', 'auditor', 'op_cons'];
   if (!validRoleTypes.includes(role_type)) {
     return res.status(400).json({
-      error: 'Invalid role_type. Must be one of: developer, operator, auditor'
+      error: 'Invalid role_type. Must be one of: basic, developer, op_exec, auditor, op_cons'
     });
+  }
+
+  // Validar selected_role si se proporciona
+  let parsedSelectedRole: SelectedRole | undefined;
+  if (selected_role) {
+    try {
+      parsedSelectedRole = typeof selected_role === 'string' ? JSON.parse(selected_role) : selected_role;
+
+      // Validar estructura
+      if (
+        !parsedSelectedRole ||
+        typeof parsedSelectedRole.principal !== 'boolean' ||
+        (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
+        (parsedSelectedRole.proveedor !== undefined && typeof parsedSelectedRole.proveedor !== 'boolean') ||
+        (parsedSelectedRole.operator_exec !== undefined && typeof parsedSelectedRole.operator_exec !== 'boolean') ||
+        (parsedSelectedRole.operator_cons !== undefined && typeof parsedSelectedRole.operator_cons !== 'boolean')
+      ) {
+        throw new Error('Invalid selected_role structure');
+      }
+    } catch (err) {
+      return res.status(400).json({
+        error: 'selected_role must be a valid JSON with principal (required), auditor, proveedor, operator_exec, operator_cons (all boolean)'
+      });
+    }
   }
 
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
-    const row = await managementsService.updateRoleByType(organization_identifier, role_type);
+    const row = await managementsService.updateRoleByType(organization_identifier, role_type, parsedSelectedRole);
 
     return res.status(200).json(row);
   } catch (error) {

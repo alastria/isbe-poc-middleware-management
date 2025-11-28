@@ -5,7 +5,9 @@ import * as schema from './schema.js';
 import 'dotenv/config';
 import { DB_CONNECTION } from '../settings.js';
 import { roles } from './schema.js';
-import { eq } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { sql } from 'drizzle-orm';
 
 export async function runMigrations() {
   console.log('Running database migrations...');
@@ -33,60 +35,19 @@ export async function runMigrations() {
 }
 
 async function seedData(db: ReturnType<typeof drizzle>) {
-  console.log('Checking seed data...');
+  console.log('Running seed data...');
 
   try {
-    // Verificar si ya existen roles
-    const existingRoles = await db.select().from(roles);
+    // Leer el archivo seed.sql
+    const seedSqlPath = join(process.cwd(), 'drizzle', 'seed.sql');
+    const seedSql = readFileSync(seedSqlPath, 'utf-8');
 
-    if (existingRoles.length === 0) {
-      console.log('Inserting seed data for roles...');
+    // Ejecutar el SQL directamente (incluye ON CONFLICT para sobrescribir)
+    await db.execute(sql.raw(seedSql));
 
-      // Insertar roles con sus políticas
-      await db.insert(roles).values([
-        {
-          type: 'developer',
-          policies: [{
-            action: ['*'],
-            domain: 'ISBE',
-            function: '*',
-            type: 'organization'
-          }]
-        },
-        {
-          type: 'operator',
-          policies: [
-            {
-              action: ['*'],
-              domain: 'ISBE',
-              function: '*',
-              type: 'organization'
-            },
-            {
-              action: ['*'],
-              domain: 'ISBE',
-              function: 'NodeManagement',
-              type: 'organization'
-            }
-          ]
-        },
-        {
-          type: 'auditor',
-          policies: [{
-            action: ['read'],
-            domain: 'ISBE',
-            function: '*',
-            type: 'domain'
-          }]
-        }
-      ]);
-
-      console.log('✅ Seed data inserted successfully!');
-    } else {
-      console.log(`✓ Roles already exist (${existingRoles.length} found), skipping seed data`);
-    }
+    console.log('✅ Seed data executed successfully!');
   } catch (error) {
-    console.error('Failed to insert seed data:', error);
+    console.error('Failed to execute seed data:', error);
     // No hacemos exit para que el servidor pueda arrancar aunque falle el seed
   }
 }
