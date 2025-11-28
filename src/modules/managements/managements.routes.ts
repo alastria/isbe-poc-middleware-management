@@ -17,7 +17,7 @@ const managementsRouter: Router = Router();
 // POST - Crear un nuevo management con archivos (sin role_id)
 managementsRouter.post('/', uploadMiddleware, createManagement);
 
-// GET - Descargar el documento/contrato de un management
+// GET - Descargar el documento/contrato
 managementsRouter.get('/:organization_identifier/documents', downloadManagementDocument);
 
 // PUT - Actualizar contrato (para usuarios de la organización)

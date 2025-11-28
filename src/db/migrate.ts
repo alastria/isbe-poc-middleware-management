@@ -5,7 +5,6 @@ import * as schema from './schema.js';
 import 'dotenv/config';
 import { DB_CONNECTION } from '../settings.js';
 import { roles } from './schema.js';
-import { eq } from 'drizzle-orm';
 
 export async function runMigrations() {
   console.log('Running database migrations...');
@@ -45,6 +44,15 @@ async function seedData(db: ReturnType<typeof drizzle>) {
       // Insertar roles con sus políticas
       await db.insert(roles).values([
         {
+          type: 'basic',
+          policies: [{
+            action: ['read'],
+            domain: 'ISBE',
+            function: '*',
+            type: 'organization'
+          }]
+        },
+        {
           type: 'developer',
           policies: [{
             action: ['*'],
@@ -54,7 +62,7 @@ async function seedData(db: ReturnType<typeof drizzle>) {
           }]
         },
         {
-          type: 'operator',
+          type: 'op_exec',
           policies: [
             {
               action: ['*'],
@@ -77,6 +85,21 @@ async function seedData(db: ReturnType<typeof drizzle>) {
             domain: 'ISBE',
             function: '*',
             type: 'domain'
+          }]
+        },
+        {
+          type: 'op_cons',
+          policies: [{
+            action: ['*'],
+            domain: 'ISBE',
+            function: 'NodeManager',
+            type: 'organization'
+          },
+        {
+            action: ['*'],
+            domain: 'ISBE',
+            function: 'Permisionado',
+            type: 'organization'
           }]
         }
       ]);

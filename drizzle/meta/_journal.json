@@ -15,6 +15,20 @@
       "when": 1764161606967,
       "tag": "0001_mushy_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764315326217,
+      "tag": "0002_blushing_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764317372031,
+      "tag": "0003_tidy_diamondback",
+      "breakpoints": true
     }
   ]
 }

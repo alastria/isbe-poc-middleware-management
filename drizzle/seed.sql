@@ -8,23 +8,158 @@
 -- Este seed se ejecuta automáticamente al arrancar, pero puedes ejecutarlo manualmente con:
 -- docker compose exec -T postgres psql -U postgres -d isbe_middleware < drizzle/seed.sql
 
+-- Nuevos tipos de roles basados en la combinación de selected_role:
+-- basic: solo principal
+-- developer: principal + proveedor
+-- op_exec: principal + operator_exec
+-- auditor: principal + auditor
+-- op_cons: principal + operator_cons
+
 INSERT INTO roles (type, policies) VALUES
+  ('basic', '[{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Management",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Support",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Faucet",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Identity",
+      "type": "organization"
+    }]'::jsonb),
+
   ('developer', '[{
       "action": ["*"],
       "domain": "ISBE",
       "function": "*",
       "type": "organization"
-    }]'::jsonb),
-
-  ('operator', '[{
+    },
+    {
       "action": ["*"],
       "domain": "ISBE",
-      "function": "*",
+      "function": "Management",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Support",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "BaaS",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Faucet",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Rgdp",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
       "type": "organization"
     }, {
       "action": ["*"],
       "domain": "ISBE",
+      "function": "Sc",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Wizard",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Identity",
+      "type": "organization"
+    }]'::jsonb),
+
+  ('op_exec', '[{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "*",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Management",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Support",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "BaaS",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Faucet",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Permissioning",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
       "function": "NodeManagement",
+      "type": "organization"
+    }, {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Rgdp",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Sc",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Wizard",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Identity",
       "type": "organization"
     }]'::jsonb),
 
@@ -33,7 +168,92 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "*",
       "type": "domain"
+    },
+    {
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Management",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Support",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "BaaS",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Faucet",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Permissioning",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Rgdp",
+      "type": "domain"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
+      "type": "organization"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Sc",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Wizard",
+      "type": "domain"
+    },{
+      "action": ["read"],
+      "domain": "ISBE",
+      "function": "Identity",
+      "type": "domain"
+    }]'::jsonb),
+
+  ('op_cons', '[{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Management",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "NodeManagement",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Helpdesk",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Permissioning",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Identity",
+      "type": "organization"
     }]'::jsonb)
+
 ON CONFLICT (type) DO UPDATE SET
   policies = EXCLUDED.policies,
   modified_at = NOW();
