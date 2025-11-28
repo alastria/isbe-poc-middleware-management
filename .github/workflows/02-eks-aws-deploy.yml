@@ -187,13 +187,13 @@ jobs:
         echo " > Verifying deployment..."
         kubectl -n ${{ vars.EKS_NAMESPACE }} get pods
 
-        echo " > spleeping 30 seconds to allow pods to start..."
-        sleep 30
+        echo " > spleeping 40 seconds to allow pods to start..."
+        sleep 40
         echo " > Getting last deployed pod ID"
         LAST_POD=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} -o custom-columns=creationTimestamp:.metadata.creationTimestamp,PodName:.metadata.name --no-headers | sort -k1 | tail -n 1 | awk '{print $2}')
         echo "Last deployed pod $LAST_POD"
         echo " > Waiting for pod to be ready"
-        OUT=$(kubectl -n ${{ vars.EKS_NAMESPACE }} wait --for=condition=ready pod/$LAST_POD --timeout=30s) || true
+        OUT=$(kubectl -n ${{ vars.EKS_NAMESPACE }} wait --for=condition=ready pod/$LAST_POD --timeout=40s) || true
         echo "$OUT" | grep -q 'condition met' || {
           echo " > Getting NEW LAST deployed pod ID";
           LAST_POD_2=$(kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} -o custom-columns=creationTimestamp:.metadata.creationTimestamp,PodName:.metadata.name --no-headers | sort -k1 | tail -n 1 | awk '{print $2}');
