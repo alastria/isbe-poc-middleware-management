@@ -24,13 +24,9 @@ export const DB_CONNECTION = {
 };
 
 type AuthSettings = {
-  ISSUER: string;
   JWKS_URI: string;
-  AUDIENCE?: string | undefined;
 };
 
 export const AUTH: AuthSettings = {
-  ISSUER: process.env.KEYCLOAK_ISSUER ?? '',
-  AUDIENCE: process.env.KEYCLOAK_AUDIENCE ?? undefined,
-  JWKS_URI: `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`,
+  JWKS_URI: `${process.env.KEYCLOAK_JWKS_URI}`,
 };
