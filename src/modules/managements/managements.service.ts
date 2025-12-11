@@ -27,7 +27,7 @@ export class ManagementsService {
 
   // Función auxiliar para determinar el tipo de rol basado en selected_role
   private determineRoleType(selectedRole: SelectedRole): RoleType | null {
-    const { principal, auditor, proveedor, operator_exec, operator_cons } = selectedRole;
+    const { principal, auditor, developer, op_exec, op_cons } = selectedRole;
 
     // Si no está principal, no hay rol válido
     if (!principal) {
@@ -35,7 +35,7 @@ export class ManagementsService {
     }
 
     // Contar cuántos roles adicionales están activos
-    const additionalRoles = [auditor, proveedor, operator_exec, operator_cons].filter(Boolean).length;
+    const additionalRoles = [auditor, developer, op_exec, op_cons].filter(Boolean).length;
 
     // Solo principal -> basic
     if (additionalRoles === 0) {
@@ -44,10 +44,10 @@ export class ManagementsService {
 
     // Principal + un rol adicional
     if (additionalRoles === 1) {
-      if (proveedor) return 'developer';
-      if (operator_exec) return 'op_exec';
+      if (developer) return 'developer';
+      if (op_exec) return 'op_exec';
       if (auditor) return 'auditor';
-      if (operator_cons) return 'op_cons';
+      if (op_cons) return 'op_cons';
     }
 
     // Si hay múltiples roles adicionales, no asignamos automáticamente
@@ -106,7 +106,13 @@ export class ManagementsService {
       }
 
       const management = await this.getById(createdId);
-      return management;
+
+      // Devolver solo id, organization_identifier y powers (policies del rol)
+      return {
+        id: management.id,
+        organization_identifier: management.organization_identifier,
+        powers: JSON.stringify(management.role?.policies) || null
+      };
     } catch (err) {
       if (err instanceof CustomError) throw err;
       throw new CustomError(

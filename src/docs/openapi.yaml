@@ -437,7 +437,7 @@ components:
           description: Archivo del contrato (PDF, DOC, etc.) - REQUERIDO
         selected_role:
           type: string
-          example: '{"principal":true,"auditor":false,"proveedor":true,"operator_exec":false,"operator_cons":false}'
+          example: '{"principal":true,"developer":true,"op_exec":false}'
           description: JSON string con roles activos - REQUERIDO
       description: >
         Schema para crear un management. El role_id se asigna automáticamente si selected_role

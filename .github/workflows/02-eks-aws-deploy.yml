@@ -75,30 +75,11 @@ jobs:
           echo "🛑 PUBLIC_BASE_URL is not set in variables"
           exit 1
         fi
-        if [[ -z "${{ vars.AUTH_N_ENABLED }}" ]]; then
-          echo "🛑 AUTH_N_ENABLED is not set in variables"
+        if [[ -z "${{ vars.KEYCLOAK_JWKS_URI }}" ]]; then
+          echo "🛑 KEYCLOAK_JWKS_URI is not set in variables"
           exit 1
         fi
-        if [[ -z "${{ vars.FAKE_ROLE }}" ]]; then
-          echo "🛑 FAKE_ROLE is not set in variables"
-          exit 1
-        fi
-        if [[ -z "${{ vars.FAKE_USER_ID }}" ]]; then
-          echo "🛑 FAKE_USER_ID is not set in variables"
-          exit 1
-        fi
-        if [[ -z "${{ vars.FAKE_COMPANY_ID }}" ]]; then
-          echo "🛑 FAKE_COMPANY_ID is not set in variables"
-          exit 1
-        fi
-        if [[ -z "${{ vars.KEYCLOAK_ISSUER }}" ]]; then
-          echo "🛑 KEYCLOAK_ISSUER is not set in variables"
-          exit 1
-        fi
-        if [[ -z "${{ vars.KEYCLOAK_AUDIENCE }}" ]]; then
-          echo "🛑 KEYCLOAK_AUDIENCE is not set in variables"
-          exit 1
-        fi
+
         if [[ -z "${{ secrets.DATABASE_URL }}" ]]; then
           echo "🛑 DATABASE_URL is not set in secrets"
           exit 1
@@ -131,12 +112,7 @@ jobs:
         ARN_CERT: ${{ vars.ARN_CERT }}
         ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
         PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
-        AUTH_N_ENABLED: ${{ vars.AUTH_N_ENABLED }}
-        FAKE_ROLE: ${{ vars.FAKE_ROLE }}
-        FAKE_USER_ID: ${{ vars.FAKE_USER_ID }}
-        FAKE_COMPANY_ID: ${{ vars.FAKE_COMPANY_ID }}
-        KEYCLOAK_ISSUER: ${{ vars.KEYCLOAK_ISSUER }}
-        KEYCLOAK_AUDIENCE: ${{ vars.KEYCLOAK_AUDIENCE }}
+        KEYCLOAK_JWKS_URI: ${{ vars.KEYCLOAK_JWKS_URI }}
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       run: |
@@ -155,16 +131,16 @@ jobs:
           exit 1
         fi
         echo "👉🏻 ✅ Image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG "
-        
+
         cd .helm
 
         # Install or Update Helm chart values with the correct image details
         echo " > Installing or Updating Helm chart with image details..."
 
-        envsubst < values.yaml | helm template . --debug --values - 
+        envsubst < values.yaml | helm template . --debug --values -
 
         echo " > Checking if deployment exists... (for example: sh.helm.release.v1.${{ vars.APP_NAME }}.v1)"
-        if kubectl -n ${{ vars.EKS_NAMESPACE }} get secrets | grep ${{ vars.APP_NAME }}.v; then 
+        if kubectl -n ${{ vars.EKS_NAMESPACE }} get secrets | grep ${{ vars.APP_NAME }}.v; then
           echo " > Deployment exists."
           echo " > Updating Helm chart values with image details..."
           envsubst < values.yaml | helm upgrade ${{ vars.APP_NAME }} . --namespace ${{ vars.EKS_NAMESPACE }} --create-namespace --values -
@@ -179,9 +155,9 @@ jobs:
 
         #kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }}
         #if kubectl -n ${{ vars.EKS_NAMESPACE }} get pods -l app.kubernetes.io/name=${{ vars.APP_NAME }} 2>&1 | grep -q "No resources found"; then
-        #  
+        #
         #else
-        #  
+        #
         #fi
 
         echo " > Verifying deployment..."

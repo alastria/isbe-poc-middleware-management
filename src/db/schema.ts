@@ -15,15 +15,17 @@ export const roleTypeEnum = pgEnum('role_type', [
   'op_exec',      // principal + operator_exec
   'auditor',      // principal + auditor
   'op_cons'     // principal + operator_cons
+
 ]);
 
 // Tipo para selected_role
 export type SelectedRole = {
   principal: boolean;
-  auditor: boolean|undefined
-  proveedor: boolean|undefined
-  operator_exec: boolean|undefined
-  operator_cons: boolean|undefined
+  developer?: boolean;
+  op_exec?: boolean;
+  op_cons?: boolean;
+  auditor?: boolean;
+
 };
 
 // Tabla de roles con sus políticas
