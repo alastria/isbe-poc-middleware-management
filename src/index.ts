@@ -5,10 +5,8 @@ import { connectDatabase } from './db/db.js';
 import { runMigrations } from './db/migrate.js';
 import { container } from 'tsyringe';
 import { registerDbInstance, setContainer } from './di.js';
-import { AUTH_N_ENABLED, DEPLOYMENT } from './settings.js';
 import { authenticate } from './modules/auth/authN.middleware.js';
-import { mockAuthN } from './modules/auth/mockAuthN.js';
-import { getRole } from './modules/roles/roleStore.js';
+import { DEPLOYMENT } from './settings.js';
 
 const PORT = Number(DEPLOYMENT.PORT);
 
@@ -17,13 +15,7 @@ async function startServer() {
 
   let db;
   try {
-    let role = getRole();
-    if (role === null || role === undefined) {
-      role = 'USER';
-      //throw new Error('No se ha recibido un valor válido para role');
-    }
-    // TODO: is necessary the db role?
-    db = await connectDatabase(role);
+    db = await connectDatabase();
   } catch (error) {
     console.error('Error al conectar a la base de datos:', error);
     process.exit(1);
@@ -43,10 +35,11 @@ async function startServer() {
   setContainer(di);
   registerDbInstance(db);
 
-  const authMw = AUTH_N_ENABLED === false ? mockAuthN() : authenticate;
-  console.log(`>> The authenticaion is set to: ${AUTH_N_ENABLED}`);
+  // TODO: habilitar autenticación
+  // const authMw = authenticate;
 
-  const app = createApp({ authMiddleware: authMw });
+  // const app = createApp({ authMiddleware: authMw });
+  const app = createApp({ authMiddleware: authenticate }); // Sin autenticación por ahora
 
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);

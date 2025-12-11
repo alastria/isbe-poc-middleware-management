@@ -33,16 +33,17 @@ export const createManagement: RequestHandler = async (req, res) => {
     // Validar estructura
     if (
       typeof parsedSelectedRole.principal !== 'boolean' ||
-      typeof parsedSelectedRole.auditor !== 'boolean' ||
-      typeof parsedSelectedRole.proveedor !== 'boolean' ||
-      typeof parsedSelectedRole.operator_exec !== 'boolean' ||
-      typeof parsedSelectedRole.operator_cons !== 'boolean'
+      (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
+      (parsedSelectedRole.developer !== undefined && typeof parsedSelectedRole.developer !== 'boolean') ||
+      (parsedSelectedRole.op_exec !== undefined && typeof parsedSelectedRole.op_exec !== 'boolean') ||
+      (parsedSelectedRole.op_cons !== undefined && typeof parsedSelectedRole.op_cons !== 'boolean')
     ) {
       throw new Error('Invalid selected_role structure');
     }
   } catch (err) {
+    console.error(err);
     return res.status(400).json({
-      error: 'selected_role must be a valid JSON with principal, auditor, proveedor, operator_exec, operator_cons (all boolean)'
+      error: 'selected_role must be a valid JSON with principal (required), auditor, developer, op_exec, op_cons (all optional boolean)'
     });
   }
 
@@ -186,15 +187,15 @@ export const updateManagementRole: RequestHandler = async (req, res) => {
         !parsedSelectedRole ||
         typeof parsedSelectedRole.principal !== 'boolean' ||
         (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
-        (parsedSelectedRole.proveedor !== undefined && typeof parsedSelectedRole.proveedor !== 'boolean') ||
-        (parsedSelectedRole.operator_exec !== undefined && typeof parsedSelectedRole.operator_exec !== 'boolean') ||
-        (parsedSelectedRole.operator_cons !== undefined && typeof parsedSelectedRole.operator_cons !== 'boolean')
+        (parsedSelectedRole.developer !== undefined && typeof parsedSelectedRole.developer !== 'boolean') ||
+        (parsedSelectedRole.op_exec !== undefined && typeof parsedSelectedRole.op_exec !== 'boolean') ||
+        (parsedSelectedRole.op_cons !== undefined && typeof parsedSelectedRole.op_cons !== 'boolean')
       ) {
         throw new Error('Invalid selected_role structure');
       }
     } catch (err) {
       return res.status(400).json({
-        error: 'selected_role must be a valid JSON with principal (required), auditor, proveedor, operator_exec, operator_cons (all boolean)'
+        error: 'selected_role must be a valid JSON with principal (required), auditor, developer, op_exec, op_cons (all boolean)'
       });
     }
   }
