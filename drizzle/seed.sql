@@ -13,8 +13,7 @@
 -- developer: principal + proveedor
 -- op_exec: principal + operator_exec
 -- auditor: principal + auditor
--- validator: principal + operator_cons
--- admin: rol de gestor ISBE
+-- op_cons: principal + operator_cons
 
 INSERT INTO roles (type, policies) VALUES
   ('basic', '[{
@@ -258,7 +257,37 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "ProductOffering",
       "type": "organization"
-    }]'::jsonb),
+    }, {
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Rgdp",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Notifications",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Sc",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Wizard",
+      "type": "organization"
+    },{
+      "action": ["*"],
+      "domain": "ISBE",
+      "function": "Identity",
+      "type": "organization"
+    },{
+      "action": [ "Create","Update","Delete" ],
+      "domain": "ISBE",
+      "function": "ProductOffering",
+      "type": "organization"
+}]'::jsonb),
 
   ('auditor', '[{
       "action": ["read"],
