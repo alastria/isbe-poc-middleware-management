@@ -263,7 +263,7 @@ export class ManagementsService {
       return {
         id: management.id,
         organization_identifier: management.organization_identifier,
-        powers: JSON.stringify(management.role?.policies) || null
+        power: JSON.stringify(management.role?.policies) || null
       };
     } catch (err: any) {
       if (err instanceof CustomError) throw err;
