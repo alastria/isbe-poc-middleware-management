@@ -104,7 +104,7 @@ INSERT INTO roles (type, policies) VALUES
     {
       "action": ["*"],
       "domain": "ISBE",
-      "function": "Rgdp",
+      "function": "Rgpd",
       "type": "organization"
     },
     {
@@ -201,7 +201,7 @@ INSERT INTO roles (type, policies) VALUES
     {
       "action": ["*"],
       "domain": "ISBE",
-      "function": "Rgdp",
+      "function": "Rgpd",
       "type": "organization"
     },
     {
@@ -260,7 +260,7 @@ INSERT INTO roles (type, policies) VALUES
     }, {
       "action": ["*"],
       "domain": "ISBE",
-      "function": "Rgdp",
+      "function": "Rgpd",
       "type": "organization"
     },{
       "action": ["*"],
@@ -328,7 +328,7 @@ INSERT INTO roles (type, policies) VALUES
     {
       "action": ["read"],
       "domain": "ISBE",
-      "function": "Rgdp",
+      "function": "Rgpd",
       "type": "domain"
     },
     {
