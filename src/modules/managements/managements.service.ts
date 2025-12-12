@@ -1,11 +1,12 @@
 import { inject, injectable } from 'tsyringe';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { DrizzleQueryError, eq } from 'drizzle-orm';
 
 import { DB_TOKEN } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import * as schema from '../../db/schema.js';
 import { managements, roles, type RoleType, type SelectedRole } from '../../db/schema.js';
+import type { PostgresError } from 'postgres';
 
 type DocumentMetadata = {
   url: string;
@@ -53,129 +54,6 @@ export class ManagementsService {
     // Si hay múltiples roles adicionales, no asignamos automáticamente
     // El admin tendrá que decidir manualmente
     return null;
-  }
-
-  async create(input: ManagementInput) {
-    try {
-      let roleId = input.role_id;
-      let needReview = false;
-      let reasonReview: string | null = null;
-
-      // Si no se proporciona role_id, intentar determinar automáticamente
-      if (!roleId && input.selected_role) {
-        const roleType = this.determineRoleType(input.selected_role);
-
-        if (roleType) {
-          // Buscar el role_id correspondiente
-          const [role] = await this.db
-            .select()
-            .from(roles)
-            .where(eq(roles.type, roleType))
-            .limit(1);
-
-          if (role) {
-            roleId = role.id;
-          }
-
-          // Si el rol es auditor o op_cons, marcar para revisión por ISBE
-          if (roleType === 'auditor' || roleType === 'op_cons') {
-            needReview = true;
-            reasonReview = 'Requires review by ISBE';
-          }
-        }
-      }
-
-      const rows = await this.db
-        .insert(managements)
-        .values({
-          ...input,
-          role_id: roleId,
-          need_review: needReview,
-          reason_review: reasonReview
-        })
-        .returning();
-
-      if (!rows?.length) {
-        throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Insert returned no rows.');
-      }
-
-      // Obtener el management completo con la foreign key del role
-      const createdId = rows[0]?.id;
-      if (!createdId) {
-        throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Created management has no ID.');
-      }
-
-      const management = await this.getById(createdId);
-
-      // Devolver solo id, organization_identifier y powers (policies del rol)
-      return {
-        id: management.id,
-        organization_identifier: management.organization_identifier,
-        powers: JSON.stringify(management.role?.policies) || null
-      };
-    } catch (err) {
-      if (err instanceof CustomError) throw err;
-      throw new CustomError(
-        ErrorCode.DB_OPERATION_FAILED,
-        'Failed to create management.',
-        err instanceof Error ? err : undefined,
-      );
-    }
-  }
-
-  async update(organization_identifier: string, input: Partial<ManagementInput>) {
-    try {
-      const rows = await this.db
-        .update(managements)
-        .set({ ...input, modified_at: new Date() })
-        .where(eq(managements.organization_identifier, organization_identifier))
-        .returning();
-
-      if (!rows?.length) {
-        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
-      }
-
-      // Obtener el management completo con la foreign key del role
-      const management = await this.getByOrganization(organization_identifier);
-      return management;
-    } catch (err) {
-      if (err instanceof CustomError) throw err;
-      throw new CustomError(
-        ErrorCode.DB_OPERATION_FAILED,
-        'Failed to update management.',
-        err instanceof Error ? err : undefined,
-      );
-    }
-  }
-
-  async updateContract(organization_identifier: string, contract: DocumentMetadata) {
-    try {
-      const rows = await this.db
-        .update(managements)
-        .set({
-          contract,
-          need_review: true,
-          reason_review: 'Contract update, verification in progress.',
-          modified_at: new Date()
-        })
-        .where(eq(managements.organization_identifier, organization_identifier))
-        .returning();
-
-      if (!rows?.length) {
-        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
-      }
-
-      // Obtener el management completo con la foreign key del role
-      const management = await this.getByOrganization(organization_identifier);
-      return management;
-    } catch (err) {
-      if (err instanceof CustomError) throw err;
-      throw new CustomError(
-        ErrorCode.DB_OPERATION_FAILED,
-        'Failed to update contract.',
-        err instanceof Error ? err : undefined,
-      );
-    }
   }
 
   async getByOrganization(organization_identifier: string) {
@@ -273,6 +151,149 @@ export class ManagementsService {
     }
   }
 
+  async create(input: ManagementInput) {
+    try {
+      let roleId = input.role_id;
+      let needReview = false;
+      let reasonReview: string | null = null;
+
+      // Verificar si ya existe el organization_identifier (sin lanzar error si no existe)
+      try {
+        const existing = await this.getByOrganization(input.organization_identifier);
+        if (existing) {
+          throw new CustomError(
+            ErrorCode.DUPLICATE_ENTRY,
+            `Organization identifier '${input.organization_identifier}' already exists.`,
+            undefined,
+          );
+        }
+      } catch (err) {
+        // Si es NOT_FOUND, está bien, continuamos
+        if (err instanceof CustomError && err.code !== ErrorCode.NOT_FOUND) {
+          throw err;
+        }
+      }
+
+      // Si no se proporciona role_id, intentar determinar automáticamente
+      if (!roleId && input.selected_role) {
+        const roleType = this.determineRoleType(input.selected_role);
+
+        if (roleType) {
+          // Buscar el role_id correspondiente
+          const [role] = await this.db
+            .select()
+            .from(roles)
+            .where(eq(roles.type, roleType))
+            .limit(1);
+
+          if (role) {
+            roleId = role.id;
+          }
+
+          // Si el rol es auditor o op_cons, marcar para revisión por ISBE
+          if (roleType === 'auditor' || roleType === 'op_cons') {
+            needReview = true;
+            reasonReview = 'Requires review by ISBE';
+          }
+        }
+      }
+
+      const rows = await this.db
+        .insert(managements)
+        .values({
+          ...input,
+          role_id: roleId,
+          need_review: needReview,
+          reason_review: reasonReview
+        })
+        .returning();
+
+      if (!rows?.length) {
+        throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Insert returned no rows.');
+      }
+
+      // Obtener el management completo con la foreign key del role
+      const createdId = rows[0]?.id;
+      if (!createdId) {
+        throw new CustomError(ErrorCode.DB_OPERATION_FAILED, 'Created management has no ID.');
+      }
+
+      const management = await this.getById(createdId);
+
+      // Devolver solo id, organization_identifier y powers (policies del rol)
+      return {
+        id: management.id,
+        organization_identifier: management.organization_identifier,
+        powers: JSON.stringify(management.role?.policies) || null
+      };
+    } catch (err: any) {
+      if (err instanceof CustomError) throw err;
+
+      throw new CustomError(
+        ErrorCode.DB_OPERATION_FAILED,
+        'Failed to create management.',
+        err instanceof Error ? err : undefined,
+      );
+    }
+    }
+
+
+  async update(organization_identifier: string, input: Partial<ManagementInput>) {
+    try {
+      const rows = await this.db
+        .update(managements)
+        .set({ ...input, modified_at: new Date() })
+        .where(eq(managements.organization_identifier, organization_identifier))
+        .returning();
+
+      if (!rows?.length) {
+        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
+      }
+
+      // Obtener el management completo con la foreign key del role
+      const management = await this.getByOrganization(organization_identifier);
+      return management;
+    } catch (err) {
+      if (err instanceof CustomError) throw err;
+      throw new CustomError(
+        ErrorCode.DB_OPERATION_FAILED,
+        'Failed to update management.',
+        err instanceof Error ? err : undefined,
+      );
+    }
+  }
+
+  async updateContract(organization_identifier: string, contract: DocumentMetadata) {
+    try {
+      const rows = await this.db
+        .update(managements)
+        .set({
+          contract,
+          need_review: true,
+          reason_review: 'Contract update, verification in progress.',
+          modified_at: new Date()
+        })
+        .where(eq(managements.organization_identifier, organization_identifier))
+        .returning();
+
+      if (!rows?.length) {
+        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
+      }
+
+      // Obtener el management completo con la foreign key del role
+      const management = await this.getByOrganization(organization_identifier);
+      return management;
+    } catch (err) {
+      if (err instanceof CustomError) throw err;
+      throw new CustomError(
+        ErrorCode.DB_OPERATION_FAILED,
+        'Failed to update contract.',
+        err instanceof Error ? err : undefined,
+      );
+    }
+  }
+
+
   async updateRoleByType(organization_identifier: string, roleType: RoleType, selectedRole?: SelectedRole) {
     try {
       // Buscar el role_id correspondiente al type
@@ -321,5 +342,5 @@ export class ManagementsService {
         err instanceof Error ? err : undefined,
       );
     }
-  }
-}
+
+   } }

@@ -42,7 +42,8 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'image/jpeg',
     'image/png',
-    'image/gif'
+    'image/gif',
+    'text/html'
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -65,6 +66,7 @@ export const upload = multer({
 export const generateFileMetadata = (file: Express.Multer.File) => {
   return {
     url: `/uploads/${file.filename}`,
+    savedName: file.filename,
     filename: file.originalname,
     size: file.size,
     mimeType: file.mimetype

@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import { getContainer } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import { ManagementsService } from './managements.service.js';
-import { upload, generateFileMetadata } from '../../utils/fileStorage.js';
+import { upload, generateFileMetadata, deleteFile } from '../../utils/fileStorage.js';
 import type { SelectedRole } from '../../db/schema.js';
 
 // Middleware de multer para manejar subida de archivos
@@ -32,7 +32,7 @@ export const createManagement: RequestHandler = async (req, res) => {
 
     // Validar estructura
     if (
-      typeof parsedSelectedRole.principal !== 'boolean' ||
+      (parsedSelectedRole.principal !== true && typeof parsedSelectedRole.principal !== 'boolean') ||
       (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
       (parsedSelectedRole.developer !== undefined && typeof parsedSelectedRole.developer !== 'boolean') ||
       (parsedSelectedRole.op_exec !== undefined && typeof parsedSelectedRole.op_exec !== 'boolean') ||
@@ -71,7 +71,11 @@ export const createManagement: RequestHandler = async (req, res) => {
     return res.status(201).json(row);
   } catch (error) {
     if (error instanceof CustomError) {
-      return res.status(400).json({ code: error.code, error: error.message });
+      //Eliminar archivo si hubo error al crear el management
+      const deleteResult = deleteFile(contract.savedName);
+      if (deleteResult) {
+        return res.status(400).json({ code: error.code, error: error.message });
+      }
     }
     console.error('createManagement error:', error);
     return res.status(500).json({ error: 'Failed to create management' });

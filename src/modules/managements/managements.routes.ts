@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { authorize } from '../auth/authZ.middleware.js';
-import { USER_ROLES } from '../../settings.js';
 import {
   uploadMiddleware,
   createManagement,
@@ -23,15 +21,13 @@ managementsRouter.get('/:organization_identifier/documents', downloadManagementD
 // PUT - Actualizar contrato (para usuarios de la organización)
 managementsRouter.put('/:organization_identifier/contract', uploadMiddleware, updateManagementContract);
 
-// PUT - Asignar/cambiar rol (solo admin)
-// managementsRouter.put('/:organization_identifier/role', authorize({ rolesAny: [USER_ROLES.ADMIN] }), updateManagementRole);
+// PUT - Asignar/cambiar rol (solo admin);
 managementsRouter.put('/:organization_identifier/role', updateManagementRole);
 
 // GET - Obtener management por organization_identifier (para la organización)
 managementsRouter.get('/organization/:organization_identifier', getManagementByOrganization);
 
 // GET - Obtener todos los managements (solo admin)
-// managementsRouter.get('/admin/all', authorize({ rolesAny: [USER_ROLES.ADMIN] }), getAllManagementsAdmin);
 managementsRouter.get('/admin/all', getAllManagementsAdmin);
 
 // GET - Obtener management por id
