@@ -276,3 +276,24 @@ export const getManagementById: RequestHandler = async (req, res) => {
     return res.status(500).json({ error: 'Failed to get management' });
   }
 };
+
+export const deleteManagementByOrganization: RequestHandler = async (req, res) => {
+  const { organization_identifier } = req.params ?? {};
+
+  if (!organization_identifier) {
+    return res.status(400).json({ error: 'organization_identifier is required' });
+  }
+
+  const managementsService = getContainer().resolve(ManagementsService);
+
+  try {
+    const result = await managementsService.deleteByOrganization(organization_identifier);
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof CustomError && error.code === ErrorCode.NOT_FOUND) {
+      return res.status(404).json({ code: error.code, error: error.message });
+    }
+    console.error('deleteManagementByOrganization error:', error);
+    return res.status(500).json({ error: 'Failed to delete management' });
+  }
+};

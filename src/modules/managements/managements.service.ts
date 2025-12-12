@@ -110,6 +110,45 @@ export class ManagementsService {
     }
   }
 
+  async deleteByOrganization(organization_identifier: string) {
+    try {
+      // Primero obtener el management para acceder a la metadata del archivo
+      const management = await this.getByOrganization(organization_identifier);
+
+      // Eliminar el registro de la base de datos
+      const rows = await this.db
+        .delete(managements)
+        .where(eq(managements.organization_identifier, organization_identifier))
+        .returning();
+
+      if (!rows?.length) {
+        throw new CustomError(ErrorCode.NOT_FOUND, 'Management not found');
+      }
+
+      // Eliminar el archivo físico del disco
+      if (management.contract && typeof management.contract === 'object') {
+        const contractMetadata = management.contract as any;
+        if (contractMetadata.url) {
+          // Extraer el nombre del archivo de la URL
+          const filename = contractMetadata.savedName as string | undefined;
+          if (filename) {
+            const { deleteFile } = await import('../../utils/fileStorage.js');
+            deleteFile(filename);
+          }
+        }
+      }
+
+      return { success: true, deleted: rows[0] };
+    } catch (err) {
+      if (err instanceof CustomError) throw err;
+      throw new CustomError(
+        ErrorCode.DB_OPERATION_FAILED,
+        'Failed to delete management',
+        err instanceof Error ? err : undefined,
+      );
+    }
+  }
+
   async getById(id: number) {
     try {
       const [row] = await this.db
