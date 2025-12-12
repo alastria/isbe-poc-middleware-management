@@ -7,7 +7,8 @@ import {
   updateManagementRole,
   getManagementByOrganization,
   getAllManagementsAdmin,
-  getManagementById
+  getManagementById,
+  deleteManagementByOrganization
 } from './managements.controller.js';
 
 const managementsRouter: Router = Router();
@@ -32,5 +33,8 @@ managementsRouter.get('/admin/all', getAllManagementsAdmin);
 
 // GET - Obtener management por id
 managementsRouter.get('/:id', getManagementById);
+
+// DELETE - Eliminar management por organization_identifier
+managementsRouter.delete('/organization/:organization_identifier', deleteManagementByOrganization);
 
 export default managementsRouter;

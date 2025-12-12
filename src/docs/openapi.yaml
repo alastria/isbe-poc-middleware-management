@@ -228,6 +228,47 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+    delete:
+      summary: Eliminar un management por organization_identifier
+      description: Elimina un management específico por su identificador de organización
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización
+      responses:
+        '200':
+          description: Management eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  deleted:
+                    $ref: '#/components/schemas/Management'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/managements/admin/all:
     get:
       summary: Obtener todos los managements (Admin)
