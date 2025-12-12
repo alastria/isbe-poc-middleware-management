@@ -350,19 +350,13 @@ INSERT INTO roles (type, policies) VALUES
       "type": "domain"
     },
     {
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Enrollment",
-      "type": "organization"
-    },
-    {
       "action": ["Execute"],
       "domain": "ISBE",
       "function": "Onboarding",
       "type": "domain"
     }]'::jsonb),
 
-  ('op_exec', '[{
+  ('op_cons', '[{
       "action": ["*"],
       "domain": "ISBE",
       "function": "Management",
@@ -409,7 +403,7 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "Onboarding",
       "type": "organization"
-    }]'::jsonb),
+    }]'::jsonb)
 
 ON CONFLICT (type) DO UPDATE SET
   policies = EXCLUDED.policies,

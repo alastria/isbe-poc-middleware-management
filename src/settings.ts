@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+const envFile = process.env.NODE_ENV === 'production' ? '.env' : '.env';
 
 dotenv.config({ path: envFile });
 
@@ -11,12 +11,6 @@ export const DEPLOYMENT = {
     .map((s) => s.trim())
     .filter(Boolean),
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
-};
-
-export const USER_ROLES = {
-  ADMIN: 'admin',
-  DEVELOPER: 'developer',
-  OPERATOR: 'operator',
 };
 
 export const DB_CONNECTION = {

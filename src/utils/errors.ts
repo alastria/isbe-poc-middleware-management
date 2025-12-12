@@ -3,6 +3,7 @@ export enum ErrorCode {
   NOT_FOUND = 'NOT_FOUND',
   DB_OPERATION_FAILED = 'DB_OPERATION_FAILED',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
+  DUPLICATE_ENTRY = 'DUPLICATE_ENTRY',
 }
 
 export class CustomError extends Error {
