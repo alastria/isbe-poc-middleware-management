@@ -43,7 +43,7 @@ paths:
     post:
       summary: Crear un management
       description: >
-        Crea un nuevo management con contrato principal y anexos opcionales.
+        Crea un nuevo management con contrato y selected_role (JSON con roles activos).
         Los archivos se suben como multipart/form-data y se almacenan en disco local.
         El role_id NO se incluye en la creación, solo el admin puede asignarlo después.
       tags: [Managements]
@@ -73,10 +73,9 @@ paths:
 
   /api/managements/{organization_identifier}/documents:
     get:
-      summary: Descargar documento/contrato
+      summary: Descargar contrato (Usuario)
       description: >
-        Descarga el archivo del contrato de un management.
-        Retorna el archivo binario con los headers apropiados para descarga.
+        Permite a usuarios de la organización descargar el archivo del contrato.
       tags: [Managements]
       parameters:
         - in: path
@@ -87,17 +86,13 @@ paths:
           description: Identificador único de la organización (PK)
       responses:
         '200':
-          description: Archivo descargado exitosamente
+          description: Archivo del contrato
           content:
             application/pdf:
               schema:
                 type: string
                 format: binary
-            application/msword:
-              schema:
-                type: string
-                format: binary
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+            application/octet-stream:
               schema:
                 type: string
                 format: binary
@@ -161,8 +156,6 @@ paths:
       summary: Asignar/cambiar rol (Solo Admin)
       description: >
         Permite al administrador asignar o cambiar el rol de un management.
-        Se envía el tipo de rol (developer, operator, auditor) y automáticamente
-        se busca y asigna el role_id correspondiente de la tabla roles.
         Al asignar un rol, se aplican las políticas asociadas.
         Solo accesible para administradores.
       tags: [Managements]
@@ -226,6 +219,47 @@ paths:
                 $ref: '#/components/schemas/Management'
         '404':
           description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    delete:
+      summary: Eliminar un management por organization_identifier
+      description: Elimina un management específico por su identificador de organización
+      tags: [Managements]
+      parameters:
+        - in: path
+          name: organization_identifier
+          required: true
+          schema:
+            type: string
+          description: Identificador único de la organización
+      responses:
+        '200':
+          description: Management eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  deleted:
+                    $ref: '#/components/schemas/Management'
+        '404':
+          description: Management no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Error de validación
           content:
             application/json:
               schema:
@@ -315,7 +349,7 @@ components:
         url:
           type: string
           format: uri
-          example: "/uploads/contracts/ORG-2024-001_principal_abc123.pdf"
+          example: "/uploads/contracts/ORG-2024-001_contract_abc123.pdf"
           description: URL relativa del archivo en el servidor (ruta local)
         filename:
           type: string
@@ -335,6 +369,66 @@ components:
         - size
         - mimeType
 
+    SelectedRole:
+      type: object
+      description: >
+        JSON con los roles activos. Se usa para determinar automáticamente el role_id:
+        - Solo principal=true -> basic
+        - principal=true + proveedor=true -> developer
+        - principal=true + operator_exec=true -> op_exec
+        - principal=true + auditor=true -> auditor
+        - principal=true + operator_cons=true -> op_cons
+      properties:
+        principal:
+          type: boolean
+          example: true
+          description: Rol principal (siempre debe ser true)
+        auditor:
+          type: boolean
+          example: false
+          description: Rol auditor (anexo)
+        proveedor:
+          type: boolean
+          example: false
+          description: Rol proveedor (anexo)
+        operator_exec:
+          type: boolean
+          example: false
+          description: Rol operator ejecutor (anexo)
+        operator_cons:
+          type: boolean
+          example: false
+          description: Rol operator consultor (anexo)
+      required:
+        - principal
+        - auditor
+        - proveedor
+        - operator_exec
+        - operator_cons
+
+    Role:
+      type: object
+      description: Información completa del rol asignado
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [basic, developer, op_exec, auditor, op_cons]
+          example: developer
+        policies:
+          type: array
+          items:
+            type: object
+          example: [{"action": ["*"], "domain": "ISBE", "function": "*", "type": "organization"}]
+        created_at:
+          type: string
+          format: date-time
+        modified_at:
+          type: string
+          format: date-time
+
     Management:
       type: object
       properties:
@@ -349,15 +443,17 @@ components:
         contract:
           $ref: '#/components/schemas/DocumentMetadata'
         selected_role:
-          type: string
-          enum: [developer, operator, auditor]
-          example: "developer"
-          description: Rol seleccionado por la organización al crear el management
+          $ref: '#/components/schemas/SelectedRole'
         role_id:
           type: integer
           nullable: true
           example: 1
-          description: ID del rol asociado (null hasta que admin lo asigne)
+          description: ID del rol asociado (se asigna automáticamente si selected_role coincide con un patrón simple)
+        role:
+          allOf:
+            - $ref: '#/components/schemas/Role'
+          nullable: true
+          description: Información completa del rol asociado (foreign key)
         created_at:
           type: string
           format: date-time
@@ -369,37 +465,36 @@ components:
       type: object
       required:
         - organization_identifier
-        - selected_role
         - contract
+        - selected_role
       properties:
         organization_identifier:
           type: string
           example: "ORG-2024-001"
           description: Identificador único de la organización (PK)
-        selected_role:
-          type: string
-          enum: [developer, operator, auditor]
-          example: "developer"
-          description: Rol que la organización desea solicitar
         contract:
           type: string
           format: binary
-          description: Archivo del contrato principal (PDF, DOC, etc.) - REQUERIDO
+          description: Archivo del contrato (PDF, DOC, etc.) - REQUERIDO
+        selected_role:
+          type: string
+          example: '{"principal":true,"developer":true,"op_exec":false}'
+          description: JSON string con roles activos - REQUERIDO
       description: >
-        Schema para crear un management. NO incluye role_id - solo admin puede asignarlo después.
+        Schema para crear un management. El role_id se asigna automáticamente si selected_role
+        coincide con un patrón simple (principal + 1 rol adicional).
 
     ManagementUpdateContract:
       type: object
       required:
         - contract
-      description: >
-        Schema para actualizar el contrato (usuarios).
-        Solo se puede actualizar el archivo del contrato.
       properties:
         contract:
           type: string
           format: binary
-          description: Nuevo archivo del contrato principal
+          description: Nuevo archivo del contrato
+      description: >
+        Schema para actualizar el contrato (usuarios).
 
     ManagementUpdateRole:
       type: object
@@ -408,9 +503,9 @@ components:
       properties:
         role_type:
           type: string
-          enum: [developer, operator, auditor]
+          enum: [basic, developer, op_exec, auditor, op_cons]
           example: developer
-          description: Tipo de rol a asignar (developer, operator o auditor)
+          description: Tipo de rol a asignar (basic, developer, op_exec, auditor, op_cons)
       description: >
         Schema para asignar/cambiar rol (solo admin).
         Se envía el tipo de rol y automáticamente se busca y asigna el role_id correspondiente.

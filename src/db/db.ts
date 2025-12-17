@@ -3,7 +3,7 @@ import * as schema from './schema.js';
 import pg from 'pg';
 import { DB_CONNECTION } from '../settings.js';
 
-export async function connectDatabase(role: string): Promise<NodePgDatabase<typeof schema>> {
+export async function connectDatabase(): Promise<NodePgDatabase<typeof schema>> {
   const connectionString = DB_CONNECTION.DATABASE_URL;
 
   if (!connectionString) {

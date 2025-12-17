@@ -5,7 +5,8 @@ import fs from 'node:fs/promises';
 import { getContainer } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import { ManagementsService } from './managements.service.js';
-import { upload, generateFileMetadata } from '../../utils/fileStorage.js';
+import { upload, generateFileMetadata, deleteFile } from '../../utils/fileStorage.js';
+import type { SelectedRole } from '../../db/schema.js';
 
 // Middleware de multer para manejar subida de archivos
 export const uploadMiddleware: ReturnType<Multer['fields']> = upload.fields([
@@ -22,6 +23,28 @@ export const createManagement: RequestHandler = async (req, res) => {
 
   if (!selected_role) {
     return res.status(400).json({ error: 'selected_role is required' });
+  }
+
+  // Validar y parsear selected_role
+  let parsedSelectedRole: SelectedRole;
+  try {
+    parsedSelectedRole = typeof selected_role === 'string' ? JSON.parse(selected_role) : selected_role;
+
+    // Validar estructura
+    if (
+      (parsedSelectedRole.principal !== true && typeof parsedSelectedRole.principal !== 'boolean') ||
+      (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
+      (parsedSelectedRole.developer !== undefined && typeof parsedSelectedRole.developer !== 'boolean') ||
+      (parsedSelectedRole.op_exec !== undefined && typeof parsedSelectedRole.op_exec !== 'boolean') ||
+      (parsedSelectedRole.op_cons !== undefined && typeof parsedSelectedRole.op_cons !== 'boolean')
+    ) {
+      throw new Error('Invalid selected_role structure');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      error: 'selected_role must be a valid JSON with principal (required), auditor, developer, op_exec, op_cons (all optional boolean)'
+    });
   }
 
   if (!files?.contract || files.contract.length === 0) {
@@ -42,13 +65,17 @@ export const createManagement: RequestHandler = async (req, res) => {
     const row = await managementsService.create({
       organization_identifier,
       contract,
-      selected_role
+      selected_role: parsedSelectedRole
     });
 
     return res.status(201).json(row);
   } catch (error) {
     if (error instanceof CustomError) {
-      return res.status(400).json({ code: error.code, error: error.message });
+      //Eliminar archivo si hubo error al crear el management
+      const deleteResult = deleteFile(contract.savedName);
+      if (deleteResult) {
+        return res.status(400).json({ code: error.code, error: error.message });
+      }
     }
     console.error('createManagement error:', error);
     return res.status(500).json({ error: 'Failed to create management' });
@@ -119,7 +146,7 @@ export const updateManagementContract: RequestHandler = async (req, res) => {
   const contract = generateFileMetadata(contractFile);
 
   try {
-    const row = await managementsService.update(organization_identifier, { contract });
+    const row = await managementsService.updateContract(organization_identifier, contract);
 
     return res.status(200).json(row);
   } catch (error) {
@@ -135,7 +162,7 @@ export const updateManagementContract: RequestHandler = async (req, res) => {
 // PUT para admin: Asignar rol y políticas
 export const updateManagementRole: RequestHandler = async (req, res) => {
   const { organization_identifier } = req.params ?? {};
-  const { role_type } = req.body ?? {};
+  const { role_type, selected_role } = req.body ?? {};
 
   if (!organization_identifier) {
     return res.status(400).json({ error: 'organization_identifier is required' });
@@ -146,17 +173,41 @@ export const updateManagementRole: RequestHandler = async (req, res) => {
   }
 
   // Validar que role_type sea válido
-  const validRoleTypes = ['developer', 'operator', 'auditor'];
+  const validRoleTypes = ['basic', 'developer', 'op_exec', 'auditor', 'op_cons'];
   if (!validRoleTypes.includes(role_type)) {
     return res.status(400).json({
-      error: 'Invalid role_type. Must be one of: developer, operator, auditor'
+      error: 'Invalid role_type. Must be one of: basic, developer, op_exec, auditor, op_cons'
     });
+  }
+
+  // Validar selected_role si se proporciona
+  let parsedSelectedRole: SelectedRole | undefined;
+  if (selected_role) {
+    try {
+      parsedSelectedRole = typeof selected_role === 'string' ? JSON.parse(selected_role) : selected_role;
+
+      // Validar estructura
+      if (
+        !parsedSelectedRole ||
+        typeof parsedSelectedRole.principal !== 'boolean' ||
+        (parsedSelectedRole.auditor !== undefined && typeof parsedSelectedRole.auditor !== 'boolean') ||
+        (parsedSelectedRole.developer !== undefined && typeof parsedSelectedRole.developer !== 'boolean') ||
+        (parsedSelectedRole.op_exec !== undefined && typeof parsedSelectedRole.op_exec !== 'boolean') ||
+        (parsedSelectedRole.op_cons !== undefined && typeof parsedSelectedRole.op_cons !== 'boolean')
+      ) {
+        throw new Error('Invalid selected_role structure');
+      }
+    } catch (err) {
+      return res.status(400).json({
+        error: 'selected_role must be a valid JSON with principal (required), auditor, developer, op_exec, op_cons (all boolean)'
+      });
+    }
   }
 
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
-    const row = await managementsService.updateRoleByType(organization_identifier, role_type);
+    const row = await managementsService.updateRoleByType(organization_identifier, role_type, parsedSelectedRole);
 
     return res.status(200).json(row);
   } catch (error) {
@@ -223,5 +274,26 @@ export const getManagementById: RequestHandler = async (req, res) => {
     }
     console.error('getManagementById error:', error);
     return res.status(500).json({ error: 'Failed to get management' });
+  }
+};
+
+export const deleteManagementByOrganization: RequestHandler = async (req, res) => {
+  const { organization_identifier } = req.params ?? {};
+
+  if (!organization_identifier) {
+    return res.status(400).json({ error: 'organization_identifier is required' });
+  }
+
+  const managementsService = getContainer().resolve(ManagementsService);
+
+  try {
+    const result = await managementsService.deleteByOrganization(organization_identifier);
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof CustomError && error.code === ErrorCode.NOT_FOUND) {
+      return res.status(404).json({ code: error.code, error: error.message });
+    }
+    console.error('deleteManagementByOrganization error:', error);
+    return res.status(500).json({ error: 'Failed to delete management' });
   }
 };

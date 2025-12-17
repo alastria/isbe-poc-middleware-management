@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { authorize } from '../auth/authZ.middleware.js';
-import { USER_ROLES } from '../../settings.js';
 import {
   uploadMiddleware,
   createManagement,
@@ -9,7 +7,8 @@ import {
   updateManagementRole,
   getManagementByOrganization,
   getAllManagementsAdmin,
-  getManagementById
+  getManagementById,
+  deleteManagementByOrganization
 } from './managements.controller.js';
 
 const managementsRouter: Router = Router();
@@ -17,24 +16,25 @@ const managementsRouter: Router = Router();
 // POST - Crear un nuevo management con archivos (sin role_id)
 managementsRouter.post('/', uploadMiddleware, createManagement);
 
-// GET - Descargar el documento/contrato de un management
+// GET - Descargar el documento/contrato
 managementsRouter.get('/:organization_identifier/documents', downloadManagementDocument);
 
 // PUT - Actualizar contrato (para usuarios de la organización)
 managementsRouter.put('/:organization_identifier/contract', uploadMiddleware, updateManagementContract);
 
-// PUT - Asignar/cambiar rol (solo admin)
-// managementsRouter.put('/:organization_identifier/role', authorize({ rolesAny: [USER_ROLES.ADMIN] }), updateManagementRole);
+// PUT - Asignar/cambiar rol (solo admin);
 managementsRouter.put('/:organization_identifier/role', updateManagementRole);
 
 // GET - Obtener management por organization_identifier (para la organización)
 managementsRouter.get('/organization/:organization_identifier', getManagementByOrganization);
 
 // GET - Obtener todos los managements (solo admin)
-// managementsRouter.get('/admin/all', authorize({ rolesAny: [USER_ROLES.ADMIN] }), getAllManagementsAdmin);
 managementsRouter.get('/admin/all', getAllManagementsAdmin);
 
 // GET - Obtener management por id
 managementsRouter.get('/:id', getManagementById);
+
+// DELETE - Eliminar management por organization_identifier
+managementsRouter.delete('/organization/:organization_identifier', deleteManagementByOrganization);
 
 export default managementsRouter;

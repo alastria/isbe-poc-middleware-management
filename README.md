@@ -43,17 +43,6 @@ For any other value → .env will be loaded
 
 Important: NODE_ENV does not control authentication or app behavior, it only determines which .env file is loaded.
 
-- AUTH_N_ENABLED
-
-Defined inside the loaded .env file. Manages the application behavior regarding authentication/authorization:
-
-```
-If AUTH_N_ENABLED=true → real authentication "authN.middleware" is enabled (JWT validation via JWKS).
-
-If AUTH_N_ENABLED=false → "mockAuthN" is enabled, a middleware that generates a fake authorization context. This allows developing and testing without validating real JWTs.
-```
-
-The envs: FAKE_ROLE, FAKE_USER_ID, FAKE_COMPANY_ID are used to create the fake authorization
 
 ## 📦 Docker
 
@@ -87,7 +76,7 @@ Alternatively, copy the JSON content and use "Import" → "Raw text" in Postman.
 
 Authentication
 
-Most endpoints require a JWT in the Authorization header. Replace <JWT_TOKEN> in the collection with a valid token, or run the app with AUTH_N_ENABLED=false to enable the built-in mock authentication.
+Most endpoints require a JWT in the Authorization header.
 
 Example requests included
 
