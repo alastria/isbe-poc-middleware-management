@@ -1,12 +1,13 @@
 import { inject, injectable } from 'tsyringe';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DrizzleQueryError, eq } from 'drizzle-orm';
 
 import { DB_TOKEN } from '../../di.js';
 import { CustomError, ErrorCode } from '../../utils/errors.js';
 import * as schema from '../../db/schema.js';
 import { managements, roles, type RoleType, type SelectedRole } from '../../db/schema.js';
-import type { PostgresError } from 'postgres';
+import { count, eq } from 'drizzle-orm';
+import type { PaginationParams } from '../../utils/pagination.js';
+import { createPaginatedResponse } from '../../utils/pagination.js';
 
 type DocumentMetadata = {
   url: string;
@@ -97,10 +98,49 @@ export class ManagementsService {
     }
   }
 
-  async getAll() {
+  async getAll(pagination: PaginationParams) {
     try {
-      const rows = await this.db.select().from(managements);
-      return rows;
+      // Get total count
+      const [totalResult] = await this.db
+        .select({ count: count() })
+        .from(managements);
+
+      const total = totalResult?.count ?? 0;
+
+      // If no data, return empty paginated response
+      if (total === 0) {
+        return createPaginatedResponse([], 0, pagination.page, pagination.limit);
+      }
+
+      // Get paginated data with join
+      const rows = await this.db
+        .select()
+        .from(managements)
+        .leftJoin(roles, eq(managements.role_id, roles.id))
+        .limit(pagination.limit)
+        .offset(pagination.offset);
+
+      // Transform the result to match expected structure
+      const data = rows.map(row => ({
+        id: row.managements.id,
+        organization_identifier: row.managements.organization_identifier,
+        contract: row.managements.contract,
+        selected_role: row.managements.selected_role,
+        role_id: row.managements.role_id,
+        need_review: row.managements.need_review,
+        reason_review: row.managements.reason_review,
+        created_at: row.managements.created_at,
+        modified_at: row.managements.modified_at,
+        role: row.roles ? {
+          id: row.roles.id,
+          type: row.roles.type,
+          policies: row.roles.policies,
+          created_at: row.roles.created_at,
+          modified_at: row.roles.modified_at,
+        } : null,
+      }));
+
+      return createPaginatedResponse(data, total, pagination.page, pagination.limit);
     } catch (err) {
       throw new CustomError(
         ErrorCode.DB_OPERATION_FAILED,
