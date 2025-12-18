@@ -79,7 +79,7 @@ jobs:
           echo "🛑 KEYCLOAK_JWKS_URI is not set in variables"
           exit 1
         fi
-        if [[ -z "${{ secrets.API_KEYS }}" ]]; then
+        if [[ -z "${{ vars.API_KEYS }}" ]]; then
           echo "🛑 API_KEYS is not set in secrets"
           exit 1
         fi
@@ -117,7 +117,7 @@ jobs:
         ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
         PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         KEYCLOAK_JWKS_URI: ${{ vars.KEYCLOAK_JWKS_URI }}
-        API_KEYS: ${{ secrets.API_KEYS }}
+        API_KEYS: ${{ vars.API_KEYS }}
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       run: |

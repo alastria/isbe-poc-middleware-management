@@ -10,7 +10,6 @@ image:
 secrets:
   # Agrega aquí tus secretos en formato clave: valor
   DATABASE_URL: ${DATABASE_URL}
-  API_KEYS: ${API_KEYS}
 
 app:
   port: 3000
@@ -18,6 +17,7 @@ app:
     PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
     ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
     KEYCLOAK_JWKS_URI: "${KEYCLOAK_JWKS_URI}"
+    API_KEYS: "${API_KEYS}"
     PORT: 3000
 
 strategy:
