@@ -19,8 +19,13 @@ export const DB_CONNECTION = {
 
 type AuthSettings = {
   JWKS_URI: string;
+  API_KEYS: string[];
 };
 
 export const AUTH: AuthSettings = {
   JWKS_URI: `${process.env.KEYCLOAK_JWKS_URI}`,
+  API_KEYS: (process.env.API_KEYS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
 };
