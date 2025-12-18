@@ -10,6 +10,7 @@ image:
 secrets:
   # Agrega aquí tus secretos en formato clave: valor
   DATABASE_URL: ${DATABASE_URL}
+  API_KEYS: ${API_KEYS}
 
 app:
   port: 3000
