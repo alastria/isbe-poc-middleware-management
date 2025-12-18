@@ -100,7 +100,13 @@ export const downloadManagementDocument: RequestHandler = async (req, res) => {
     }
 
     const contractMetadata = management.contract as any;
-    const filePath = path.join(process.cwd(), contractMetadata.url);
+
+    // Usar savedName para construir la ruta correcta
+    if (!contractMetadata.savedName) {
+      return res.status(404).json({ error: 'Contract file metadata incomplete' });
+    }
+
+    const filePath = path.join(process.cwd(), 'uploads', contractMetadata.savedName);
 
     // Verificar que el archivo existe
     try {
@@ -245,8 +251,12 @@ export const getAllManagementsAdmin: RequestHandler = async (req, res) => {
   const managementsService = getContainer().resolve(ManagementsService);
 
   try {
-    const managements = await managementsService.getAll();
-    return res.status(200).json(managements);
+    const { parsePaginationParams } = await import('../../utils/pagination.js');
+    const pagination = parsePaginationParams(req.query);
+
+    const result = await managementsService.getAll(pagination);
+
+    return res.status(200).json(result);
   } catch (error) {
     if (error instanceof CustomError) {
       return res.status(400).json({ code: error.code, error: error.message });

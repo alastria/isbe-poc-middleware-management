@@ -272,17 +272,38 @@ paths:
   /api/managements/admin/all:
     get:
       summary: Obtener todos los managements (Admin)
-      description: Retorna todos los managements sin paginación (solo para administradores)
+      description: Retorna todos los managements con paginación (solo para administradores)
       tags: [Managements]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Número de página
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Elementos por página (máximo 100)
       responses:
         '200':
-          description: Lista de todos los managements
+          description: Lista paginada de managements
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Management'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Management'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -516,6 +537,34 @@ components:
         Schema para asignar/cambiar rol (solo admin).
         Se envía el tipo de rol y automáticamente se busca y asigna el role_id correspondiente.
         Al asignar un rol, se aplican automáticamente las políticas asociadas.
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+          description: Total de elementos
+        totalPages:
+          type: integer
+          example: 10
+          description: Total de páginas
+        currentPage:
+          type: integer
+          example: 1
+          description: Página actual
+        limit:
+          type: integer
+          example: 10
+          description: Elementos por página
+        hasNext:
+          type: boolean
+          example: true
+          description: Si hay página siguiente
+        hasPrev:
+          type: boolean
+          example: false
+          description: Si hay página anterior
 
     Error:
       type: object
