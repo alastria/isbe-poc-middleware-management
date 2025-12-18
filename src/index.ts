@@ -36,10 +36,9 @@ async function startServer() {
   registerDbInstance(db);
 
   // TODO: habilitar autenticación
-  // const authMw = authenticate;
+  const authMw = authenticate;
 
-  // const app = createApp({ authMiddleware: authMw });
-  const app = createApp({ authMiddleware: authenticate }); // Sin autenticación por ahora
+  const app = createApp({ authMiddleware: authMw });
 
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);

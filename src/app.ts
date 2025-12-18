@@ -68,8 +68,8 @@ export const createApp = (opts: { authMiddleware: RequestHandler }): Express => 
     }),
   );
 
-  // TODO: Habilitar autenticación cuando esté lista
-  // app.use('/api', opts.authMiddleware);
+  // Apply authentication middleware to all /api routes
+  app.use('/api', opts.authMiddleware);
 
   app.use('/api/managements', managementsRouter);
 

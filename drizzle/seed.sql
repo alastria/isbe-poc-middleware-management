@@ -71,12 +71,7 @@ INSERT INTO roles (type, policies) VALUES
       "type": "organization"
     }]'::jsonb),
 
-  ('developer', '[{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "*",
-      "type": "organization"
-    },
+  ('developer', '[
     {
       "action": ["*"],
       "domain": "ISBE",
@@ -162,12 +157,7 @@ INSERT INTO roles (type, policies) VALUES
       "type": "organization"
     }]'::jsonb),
 
-  ('op_exec', '[{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "*",
-      "type": "organization"
-    },
+  ('op_exec', '[
     {
       "action": ["*"],
       "domain": "ISBE",
@@ -219,6 +209,12 @@ INSERT INTO roles (type, policies) VALUES
     {
       "action": ["*"],
       "domain": "ISBE",
+      "function": "Wizard",
+      "type": "organization"
+    },
+    {
+      "action": ["*"],
+      "domain": "ISBE",
       "function": "Notarization",
       "type": "organization"
     },
@@ -226,12 +222,6 @@ INSERT INTO roles (type, policies) VALUES
       "action": ["*"],
       "domain": "ISBE",
       "function": "Tokenization",
-      "type": "organization"
-    },
-    {
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Identity",
       "type": "organization"
     },
     {
@@ -257,44 +247,9 @@ INSERT INTO roles (type, policies) VALUES
       "domain": "ISBE",
       "function": "ProductOffering",
       "type": "organization"
-    }, {
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Rgpd",
-      "type": "organization"
-    },{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Notifications",
-      "type": "organization"
-    },{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Sc",
-      "type": "organization"
-    },{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Wizard",
-      "type": "organization"
-    },{
-      "action": ["*"],
-      "domain": "ISBE",
-      "function": "Identity",
-      "type": "organization"
-    },{
-      "action": [ "Create","Update","Delete" ],
-      "domain": "ISBE",
-      "function": "ProductOffering",
-      "type": "organization"
-}]'::jsonb),
+    }]'::jsonb),
 
-  ('auditor', '[{
-      "action": ["read"],
-      "domain": "ISBE",
-      "function": "*",
-      "type": "domain"
-    },
+  ('auditor', '[
     {
       "action": ["read"],
       "domain": "ISBE",
@@ -335,7 +290,7 @@ INSERT INTO roles (type, policies) VALUES
       "action": ["read"],
       "domain": "ISBE",
       "function": "Notifications",
-      "type": "organization"
+      "type": "domain"
     },
     {
       "action": ["read"],
