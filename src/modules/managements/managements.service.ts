@@ -130,14 +130,8 @@ export class ManagementsService {
         need_review: row.managements.need_review,
         reason_review: row.managements.reason_review,
         created_at: row.managements.created_at,
-        modified_at: row.managements.modified_at,
-        role: row.roles ? {
-          id: row.roles.id,
-          type: row.roles.type,
-          policies: row.roles.policies,
-          created_at: row.roles.created_at,
-          modified_at: row.roles.modified_at,
-        } : null,
+        modified_at: row.managements.modified_at
+
       }));
 
       return createPaginatedResponse(data, total, pagination.page, pagination.limit);
