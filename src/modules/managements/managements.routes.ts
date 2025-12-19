@@ -80,7 +80,8 @@ managementsRouter.get(
   '/organization/:organization_identifier',
   authorize({
     requirePower: [
-      { ...organizationPowerRequirement, action: ['read', '*'] }
+        { ...organizationPowerRequirement, action: ['read', '*'] },
+      { ...adminPowerRequirement, action: ['*', 'read'] }
     ]
   }),
   getManagementByOrganization
