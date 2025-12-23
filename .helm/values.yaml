@@ -10,6 +10,7 @@ image:
 secrets:
   # Agrega aquí tus secretos en formato clave: valor
   DATABASE_URL: ${DATABASE_URL}
+  SMTP_PASS: ${SMTP_PASS}
 
 app:
   port: 3000
@@ -19,6 +20,11 @@ app:
     KEYCLOAK_JWKS_URI: "${KEYCLOAK_JWKS_URI}"
     API_KEYS: "${API_KEYS}"
     PORT: 3000
+    SMTP_HOST: "${SMTP_HOST}"
+    SMTP_PORT: "${SMTP_PORT}"
+    SMTP_SECURE: "${SMTP_SECURE}"
+    SMTP_USER: "${SMTP_USER}"
+    EMAIL_NOTIFICATION_RECIPIENTS: "${EMAIL_NOTIFICATION_RECIPIENTS}"
 
 strategy:
   type: Recreate # Opciones: Recreate, RollingUpdate (Descomenta esta línea para usar)
