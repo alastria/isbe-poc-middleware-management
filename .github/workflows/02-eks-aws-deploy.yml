@@ -83,12 +83,30 @@ jobs:
           echo "🛑 API_KEYS is not set in secrets"
           exit 1
         fi
-
+        if [[ -z "${{ secrets.SMTP_HOST }}" ]]; then
+          echo "🛑 SMTP_HOST is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.SMTP_PORT }}" ]]; then
+          echo "🛑 SMTP_PORT is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ env.SMTP_SECURE }}" ]]; then
+          echo "🛑 SMTP_SECURE is not set in env"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.SMTP_USER }}" ]]; then
+          echo "🛑 SMTP_USER is not set in secrets"
+          exit 1
+        fi
+        if [[ -z "${{ secrets.SMTP_PASS }}" ]]; then
+          echo "🛑 SMTP_PASS is not set in secrets"
+          exit 1
+        fi
         if [[ -z "${{ secrets.DATABASE_URL }}" ]]; then
           echo "🛑 DATABASE_URL is not set in secrets"
           exit 1
         fi
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -118,6 +136,12 @@ jobs:
         PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         KEYCLOAK_JWKS_URI: ${{ vars.KEYCLOAK_JWKS_URI }}
         API_KEYS: ${{ vars.API_KEYS }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_SECURE: ${{ env.SMTP_SECURE }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        EMAIL_NOTIFICATION_RECIPIENTS: ${{ secrets.EMAIL_NOTIFICATION_RECIPIENTS }}
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       run: |

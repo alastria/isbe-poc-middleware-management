@@ -8,6 +8,12 @@ import { managements, roles, type RoleType, type SelectedRole } from '../../db/s
 import { count, eq } from 'drizzle-orm';
 import type { PaginationParams } from '../../utils/pagination.js';
 import { createPaginatedResponse } from '../../utils/pagination.js';
+import { sendNewManagementEmail } from '../../utils/emailService.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 type DocumentMetadata = {
   url: string;
@@ -293,7 +299,28 @@ export class ManagementsService {
 
       const management = await this.getById(createdId);
 
-      // Devolver solo id, organization_identifier y powers (policies del rol)
+      // Enviar correo de notificación antes de devolver la respuesta
+      if (management.contract && typeof management.contract === 'object') {
+        const contractMetadata = management.contract as any;
+
+        // Construir la ruta física del archivo
+        const uploadsDir = path.join(__dirname, '../../../uploads');
+
+        const emailData: any = {
+          organizationId: management.organization_identifier,
+          contractFilename: contractMetadata.filename || 'contract.pdf',
+          contractUrl: contractMetadata.url || '',
+        };
+
+        if (contractMetadata.savedName) {
+          emailData.contractPath = path.join(uploadsDir, contractMetadata.savedName);
+        }
+
+        await sendNewManagementEmail(emailData).catch(error => {
+          // Log error pero no interrumpir el flujo
+          console.error('Failed to send email notification:', error);
+        });
+      }      // Devolver solo id, organization_identifier y powers (policies del rol)
       return {
         id: management.id,
         organization_identifier: management.organization_identifier,
